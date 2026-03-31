@@ -17,13 +17,16 @@
     "saving": "保存中...",
     "created": "创建时间",
     "updated": "更新时间",
-    "back": "← 返回列表"
+    "back": "← 返回列表",
+    "error": "错误"
   },
   "nav": {
     "dashboard": "仪表盘",
     "projects": "项目",
     "tasks": "任务",
-    "kanban": "看板"
+    "kanban": "看板",
+    "main": "主要",
+    "collapse": "收起"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime 上层控制平面",

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { tasksApi, type TaskItem } from '../api/modules/tasks'
 import { projectsApi } from '../api/modules/projects'
 
@@ -10,6 +11,7 @@ interface TaskFormProps {
 }
 
 export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
+  const { t } = useTranslation()
   const [title, setTitle] = useState(task?.title || '')
   const [category, setCategory] = useState(task?.category || 'backend')
   const [priority, setPriority] = useState(task?.priority || 'medium')
@@ -46,63 +48,63 @@ export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
     }
   }
 
+  const categories = ['requirement', 'backend', 'frontend', 'test', 'dba', 'design', 'devops', 'doc']
+  const priorities = ['high', 'medium', 'low']
+  const statuses = ['planned', 'in_progress', 'review', 'blocked', 'done']
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{isEdit ? 'Edit Task' : 'New Task'}</h2>
+          <h2>{isEdit ? t('tasks.form_edit_title') : t('tasks.form_title')}</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Project</label>
+            <label>{t('tasks.project')}</label>
             <select value={projectIdVal} onChange={e => setProjectIdVal(e.target.value)} disabled={isEdit}>
               {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
             </select>
           </div>
           <div className="form-group">
-            <label>Title *</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title" required />
+            <label>{t('tasks.title_col')} *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('tasks.title_col')} required />
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Category</label>
+              <label>{t('tasks.detail.category')}</label>
               <select value={category} onChange={e => setCategory(e.target.value)}>
-                {['requirement', 'backend', 'frontend', 'test', 'dba', 'design', 'devops', 'doc'].map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {categories.map(c => <option key={c} value={c}>{t(`category.${c}`, c)}</option>)}
               </select>
             </div>
             <div className="form-group">
-              <label>Priority</label>
+              <label>{t('tasks.priority')}</label>
               <select value={priority} onChange={e => setPriority(e.target.value)}>
-                {['high', 'medium', 'low'].map(p => <option key={p} value={p}>{p}</option>)}
+                {priorities.map(p => <option key={p} value={p}>{t(`priority.${p}`, p)}</option>)}
               </select>
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Status</label>
+              <label>{t('tasks.status')}</label>
               <select value={status} onChange={e => setStatus(e.target.value)}>
-                {['planned', 'in_progress', 'review', 'blocked', 'done'].map(s => (
-                  <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                ))}
+                {statuses.map(s => <option key={s} value={s}>{t(`status.${s}`, s.replace('_', ' '))}</option>)}
               </select>
             </div>
             <div className="form-group">
-              <label>Phase</label>
+              <label>{t('tasks.detail.phase')}</label>
               <input value={phase} onChange={e => setPhase(e.target.value)} placeholder="e.g. Sprint 1" />
             </div>
           </div>
           <div className="form-group">
-            <label>Owner Role</label>
+            <label>{t('tasks.owner')}</label>
             <input value={ownerRole} onChange={e => setOwnerRole(e.target.value)} placeholder="e.g. rd-backend-dev" />
           </div>
           {error && <div className="form-error">{error}</div>}
           <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>{t('app.cancel')}</button>
             <button type="submit" className="btn btn-primary" disabled={loading || !title.trim()}>
-              {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+              {loading ? t('app.saving') : isEdit ? t('app.save') : t('app.create')}
             </button>
           </div>
         </form>

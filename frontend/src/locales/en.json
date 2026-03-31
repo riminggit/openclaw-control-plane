@@ -17,13 +17,16 @@
     "saving": "Saving...",
     "created": "Created",
     "updated": "Updated",
-    "back": "← Back to list"
+    "back": "← Back to list",
+    "error": "Error"
   },
   "nav": {
     "dashboard": "Dashboard",
     "projects": "Projects",
     "tasks": "Tasks",
-    "kanban": "Kanban"
+    "kanban": "Kanban",
+    "main": "Main",
+    "collapse": "Collapse"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime Control Plane",
