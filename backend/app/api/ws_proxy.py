@@ -228,8 +228,8 @@ async def ws_gateway_proxy(client_ws: WebSocket):
     gateway_url = _get_gateway_ws_url()
     identity = _get_or_create_device_identity()
     device_id = identity["deviceId"]
-    role = "operator"
-    scopes = ["operator.admin"]
+    role = "client"
+    scopes = ["sessions", "cron", "chat"]
 
     # Connect to upstream Gateway
     try:
@@ -261,12 +261,12 @@ async def ws_gateway_proxy(client_ws: WebSocket):
     signed_at_ms = int(time.time() * 1000)
     device_auth_payload = _build_device_auth_payload_v3({
         "deviceId": device_id,
-        "clientId": "control-plane",
+        "clientId": "gateway-client",
         "clientMode": "backend",
         "role": role,
         "scopes": scopes,
         "signedAtMs": signed_at_ms,
-        "token": "",  # no stored token on first connect
+        "token": _get_gateway_token(),
         "nonce": nonce,
         "platform": "linux",
         "deviceFamily": "server",
@@ -279,8 +279,8 @@ async def ws_gateway_proxy(client_ws: WebSocket):
         "id": "connect-1",
         "method": "connect",
         "params": {
-            "minProtocol": 3,
-            "maxProtocol": 3,
+            "minProtocol": "1",
+            "maxProtocol": "1",
             "role": role,
             "scopes": scopes,
             "device": {
@@ -344,7 +344,7 @@ async def ws_gateway_proxy(client_ws: WebSocket):
                                 new_signed_at = int(time.time() * 1000)
                                 new_payload = _build_device_auth_payload_v3({
                                     "deviceId": device_id,
-                                    "clientId": "control-plane",
+                                    "clientId": "gateway-client",
                                     "clientMode": "backend",
                                     "role": role,
                                     "scopes": scopes,
@@ -376,9 +376,9 @@ async def ws_gateway_proxy(client_ws: WebSocket):
             return
     else:
         # Successful connect - store device token if provided
-        result = response.get("result", {})
-        auth_info = result.get("auth", {})
-        device_token = auth_info.get("deviceToken")
+        payload = response.get("payload", {})
+        auth_info = payload.get("auth", {})
+        device_token = auth_info.get("device_token")
         if device_token:
             _save_device_auth_token(device_id, role, device_token, auth_info.get("scopes", scopes))
             logger.info("Stored device token for %s", device_id[:12])
