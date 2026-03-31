@@ -16,9 +16,13 @@ export default defineConfig({
     },
   },
   build: {
-    cssCodeSplit: true,
     rollupOptions: {
-      output: { manualChunks: { vendor: ['react', 'react-dom'] } },
+      output: {
+        manualChunks: { vendor: ['react', 'react-dom'] },
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+      },
     },
   },
 })

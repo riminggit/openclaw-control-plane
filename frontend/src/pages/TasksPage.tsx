@@ -75,7 +75,7 @@ export function TasksPage() {
           <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="filter-select">
             <option value="">{t('tasks.all_priority')}</option>
             {['high', 'medium', 'low'].map(p => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>{t(`priority.${p}`)}</option>
             ))}
           </select>
           <div style={{ flex: 1 }} />

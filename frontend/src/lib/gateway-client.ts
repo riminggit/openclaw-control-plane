@@ -22,7 +22,7 @@ export class GatewayClient {
   private ws: WebSocket | null = null
   private _state: ConnectionState = 'disconnected'
   private nextId = 1
-  private pending = new Map<number, PendingRequest>()
+  private pending = new Map<string, PendingRequest>()
   private listeners = new Map<string, Set<EventCallback>>()
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectDelay = 1000
@@ -134,7 +134,7 @@ export class GatewayClient {
         reject(new Error('Not connected'))
         return
       }
-      const id = this.nextId++
+      const id = String(this.nextId++)
       const timer = setTimeout(() => {
         this.pending.delete(id)
         reject(new Error('Timeout'))
