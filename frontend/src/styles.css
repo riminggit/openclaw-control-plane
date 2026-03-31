@@ -155,7 +155,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .sidebar-footer-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 
 /* ===== Main Content ===== */
-.main-wrapper { flex: 1; margin-left: var(--sidebar-width); display: flex; flex-direction: column; min-height: 100vh; transition: margin-left var(--transition-slow); }
+.main-wrapper { flex: 1; margin-left: var(--sidebar-width); display: flex; flex-direction: column; min-height: 100vh; min-width: 0; overflow-x: auto; transition: margin-left var(--transition-slow); }
 
 /* ===== Top Bar ===== */
 .topbar {
@@ -175,7 +175,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
 
 /* ===== Page Content ===== */
-.page-content { flex: 1; padding: var(--space-8) var(--space-10); max-width: 1400px; width: 100%; animation: fadeIn var(--transition-normal); }
+.page-content { flex: 1; padding: var(--space-8) var(--space-10); width: 100%; min-width: 0; animation: fadeIn var(--transition-normal); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ===== Page Header ===== */
