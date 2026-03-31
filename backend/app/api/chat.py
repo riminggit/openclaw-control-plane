@@ -16,6 +16,26 @@ router = APIRouter(prefix="/api/chat")
 _messages_store: list[dict] = []
 
 
+# ── Sync endpoint (frontend pushes messages here) ──
+
+class SyncMessagesRequest(BaseModel):
+    messages: list[dict] = Field(default_factory=list)
+
+@router.post("/sync")
+def sync_messages(body: SyncMessagesRequest):
+    """Accept messages from the frontend (from Gateway events)."""
+    global _messages_store
+    for m in (body.messages or []):
+        # Deduplicate by session_key + message_id combo
+        key = f"{m.get('session_key','')}:{m.get('id','')}"
+        if not any(f"{x.get('session_key','')}:{x.get('id','')}" == key for x in _messages_store):
+            _messages_store.append(m)
+    # Keep last 2000 messages
+    if len(_messages_store) > 2000:
+        _messages_store = _messages_store[-2000:]
+    return {"ok": True, "count": len(_messages_store)}
+
+
 # ── Schemas ──
 
 class BroadcastRequest(BaseModel):

@@ -9,16 +9,38 @@ interface ChatMsg {
   toolCalls?: any[]
   timestamp?: string
   _type?: 'user' | 'assistant' | 'tool'
+  session_key?: string
 }
+
+type Tab = 'chat' | 'all' | 'search' | 'broadcast' | 'bookmarks'
 
 export function ChatPage() {
   const { t } = useTranslation()
   const connState = useConnectionState()
+  const [tab, setTab] = useState<Tab>('chat')
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [aborting, setAborting] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searching, setSearching] = useState(false)
+
+  // All messages state
+  const [allMessages, setAllMessages] = useState<any[]>([])
+
+  // Broadcast state
+  const [broadcastMsg, setBroadcastMsg] = useState('')
+  const [broadcastKeys, setBroadcastKeys] = useState('')
+  const [broadcastSessions, setBroadcastSessions] = useState<any[]>([])
+  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set())
+  const [broadcastSent, setBroadcastSent] = useState(false)
+
+  // Bookmarks state
+  const [bookmarks, setBookmarks] = useState<any[]>([])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -43,7 +65,6 @@ export function ChatPage() {
   useEffect(() => {
     if (connState !== 'connected') return
     const off = gatewayClient.on('agent', (payload: any) => {
-      // Append tool output as system message
       const text = typeof payload === 'string' ? payload : (payload.text || payload.output || JSON.stringify(payload))
       setMessages(prev => [...prev, { role: 'system', content: `🔧 ${text}`, timestamp: new Date().toISOString() }])
     })
@@ -69,6 +90,65 @@ export function ChatPage() {
     try { await gatewayClient.call('chat.abort', {}) } catch { /* */ } finally { setAborting(false) }
   }
 
+  // Tab change: load data
+  const switchTab = async (newTab: Tab) => {
+    setTab(newTab)
+    if (newTab === 'all') {
+      try {
+        const res = await fetch('/api/chat/all-messages?limit=200')
+        setAllMessages(await res.json())
+      } catch { /* */ }
+    } else if (newTab === 'bookmarks') {
+      try {
+        const res = await fetch('/api/chat/bookmarks')
+        setBookmarks(await res.json())
+      } catch { /* */ }
+    } else if (newTab === 'broadcast' && broadcastSessions.length === 0) {
+      try {
+        if (connState === 'connected') {
+          const res = await gatewayClient.call('sessions.list')
+          const list = res?.items || res || []
+          setBroadcastSessions(list)
+        }
+      } catch { /* */ }
+    }
+  }
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return
+    setSearching(true)
+    try {
+      const res = await fetch(`/api/chat/search?q=${encodeURIComponent(searchQuery)}&limit=50`)
+      setSearchResults(await res.json())
+    } catch { setSearchResults([]) }
+    setSearching(false)
+  }
+
+  const handleBroadcast = async () => {
+    if (!broadcastMsg.trim() || selectedSessions.size === 0) return
+    try {
+      await fetch('/api/chat/broadcast', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_keys: Array.from(selectedSessions), message: broadcastMsg.trim() }),
+      })
+      // Also try real Gateway sends
+      if (connState === 'connected') {
+        for (const key of selectedSessions) {
+          try { await gatewayClient.call('chat.send', { sessionKey: key, message: broadcastMsg.trim() }) } catch { /* */ }
+        }
+      }
+      setBroadcastSent(true)
+      setTimeout(() => setBroadcastSent(false), 3000)
+      setBroadcastMsg('')
+    } catch { /* */ }
+  }
+
+  const toggleSessionSelect = (key: string) => {
+    const next = new Set(selectedSessions)
+    next.has(key) ? next.delete(key) : next.add(key)
+    setSelectedSessions(next)
+  }
+
   if (connState !== 'connected') {
     return (
       <div className="empty-state">
@@ -79,63 +159,186 @@ export function ChatPage() {
     )
   }
 
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'chat', label: t('chat.title') },
+    { key: 'all', label: t('chat.allMessages') },
+    { key: 'search', label: t('chat.search').replace('...', '') },
+    { key: 'broadcast', label: t('chat.broadcast') },
+    { key: 'bookmarks', label: t('chat.bookmarks') },
+  ]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--topbar-height, 56px) - 80px)' }}>
       <div className="page-header" style={{ flexShrink: 0 }}>
         <h1>{t('chat.title')}</h1>
       </div>
 
-      <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div className="card-body" style={{ flex: 1, overflow: 'auto' }}>
-          {messages.length === 0 && (
-            <div className="empty-state" style={{ height: '100%' }}>
-              <div className="empty-state-icon">💬</div>
-              <div className="empty-state-desc">{t('chat.empty')}</div>
-            </div>
-          )}
-          {messages.map((msg, i) => (
-            <div key={i} style={{
-              padding: 'var(--space-3)',
-              marginBottom: 'var(--space-2)',
-              borderRadius: 'var(--radius-md)',
-              background: msg._type === 'user' ? 'var(--accent-bg, rgba(59,130,246,0.1))' : 'var(--bg-secondary, rgba(255,255,255,0.05))',
-              maxWidth: '85%',
-              marginLeft: msg._type === 'user' ? 'auto' : 0,
-            }}>
-              <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, marginBottom: 'var(--space-1)', color: 'var(--text-muted)' }}>
-                {msg.role === 'user' ? '👤 You' : msg.role === 'system' ? '⚙️ System' : '🤖 Agent'}
-                {msg.timestamp && <span style={{ marginLeft: 'var(--space-2)' }}>{new Date(msg.timestamp).toLocaleTimeString()}</span>}
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 2, marginBottom: 12, borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
+        {tabs.map(tb => (
+          <button key={tb.key} onClick={() => switchTab(tb.key)} style={{
+            padding: '8px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: tab === tb.key ? '2px solid var(--status-blue)' : '2px solid transparent',
+            color: tab === tb.key ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: tab === tb.key ? 600 : 400,
+            fontSize: 13, transition: 'all 0.15s',
+          }}>
+            {tb.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Chat Tab */}
+      {tab === 'chat' && (
+        <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="card-body" style={{ flex: 1, overflow: 'auto' }}>
+            {messages.length === 0 && (
+              <div className="empty-state" style={{ height: '100%' }}>
+                <div className="empty-state-icon">💬</div>
+                <div className="empty-state-desc">{t('chat.empty')}</div>
               </div>
-              <div style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>{msg.content}</div>
-              {msg.toolCalls?.map((tc: any, j: number) => (
-                <span key={j} className="badge badge-active" style={{ marginRight: 'var(--space-1)', fontSize: 'var(--text-xs)', marginTop: 'var(--space-1)', display: 'inline-block' }}>
-                  🔧 {tc.name || tc.function?.name || 'tool'}
-                </span>
+            )}
+            {messages.map((msg, i) => (
+              <div key={i} style={{
+                padding: 'var(--space-3)', marginBottom: 'var(--space-2)',
+                borderRadius: 'var(--radius-md)',
+                background: msg._type === 'user' ? 'var(--accent-bg, rgba(59,130,246,0.1))' : 'var(--bg-secondary, rgba(255,255,255,0.05))',
+                maxWidth: '85%', marginLeft: msg._type === 'user' ? 'auto' : 0,
+              }}>
+                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, marginBottom: 'var(--space-1)', color: 'var(--text-muted)' }}>
+                  {msg.role === 'user' ? '👤 You' : msg.role === 'system' ? '⚙️ System' : '🤖 Agent'}
+                  {msg.timestamp && <span style={{ marginLeft: 'var(--space-2)' }}>{new Date(msg.timestamp).toLocaleTimeString()}</span>}
+                </div>
+                <div style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>{msg.content}</div>
+                {msg.toolCalls?.map((tc: any, j: number) => (
+                  <span key={j} className="badge badge-active" style={{ marginRight: 'var(--space-1)', fontSize: 'var(--text-xs)', marginTop: 'var(--space-1)', display: 'inline-block' }}>
+                    🔧 {tc.name || tc.function?.name || 'tool'}
+                  </span>
+                ))}
+              </div>
+            ))}
+            {sending && (
+              <div style={{ padding: 'var(--space-3)', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                🤖 <span className="skeleton" style={{ width: 120, height: 14, display: 'inline-block' }} />
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+          <div style={{ borderTop: '1px solid var(--border-color)', padding: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
+            <input className="form-input" style={{ flex: 1 }} value={input} onChange={e => setInput(e.target.value)}
+              placeholder={t('chat.placeholder')} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()} disabled={sending} />
+            {sending && <button className="btn btn-danger" onClick={handleAbort} disabled={aborting}>{t('chat.abort')}</button>}
+            <button className="btn btn-primary" onClick={handleSend} disabled={sending || !input.trim()}>{t('chat.send')}</button>
+          </div>
+        </div>
+      )}
+
+      {/* All Messages Tab */}
+      {tab === 'all' && (
+        <div className="card" style={{ flex: 1, overflow: 'auto' }}>
+          <div className="card-body">
+            {allMessages.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 32 }}>{t('app.no_data')}</div>
+            ) : allMessages.map((m: any, i: number) => (
+              <div key={i} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: m.role === 'user' ? 'var(--status-blue)' : 'var(--status-green)' }}>
+                    {m.role || 'assistant'}
+                    {m.session_key && <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{m.session_key}</span>}
+                  </span>
+                  {m.timestamp && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{new Date(m.timestamp).toLocaleTimeString()}</span>}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+                  {(m.content || '').substring(0, 200)}{(m.content || '').length > 200 ? '...' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Search Tab */}
+      {tab === 'search' && (
+        <div className="card" style={{ flex: 1, overflow: 'auto' }}>
+          <div className="card-body">
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <input className="form-input" style={{ flex: 1 }} value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                placeholder={t('chat.searchPlaceholder')} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+              <button className="btn btn-primary" onClick={handleSearch} disabled={searching}>{t('app.search')}</button>
+            </div>
+            {searchResults.length === 0 && searchQuery && !searching && (
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 32 }}>{t('chat.noResults')}</div>
+            )}
+            {searchResults.map((r: any, i: number) => (
+              <div key={i} style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--status-blue)' }}>
+                    {r.session_key || r.role || 'unknown'}
+                  </span>
+                  {r.timestamp && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{new Date(r.timestamp).toLocaleTimeString()}</span>}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+                  {(r.content || '').substring(0, 300)}{(r.content || '').length > 300 ? '...' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Broadcast Tab */}
+      {tab === 'broadcast' && (
+        <div className="card" style={{ flex: 1, overflow: 'auto' }}>
+          <div className="card-body">
+            {broadcastSent && (
+              <div style={{ padding: '8px 12px', marginBottom: 12, borderRadius: 'var(--radius-md)', background: 'var(--status-green)', color: '#fff', fontSize: 13 }}>
+                ✓ Broadcast sent to {selectedSessions.size} sessions
+              </div>
+            )}
+            <h3 style={{ color: 'var(--text-primary)', fontSize: 14, marginBottom: 8 }}>{t('chat.selectSessions')}</h3>
+            <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 12, border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: 4 }}>
+              {broadcastSessions.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', padding: 12, fontSize: 13 }}>No sessions</div>
+              ) : broadcastSessions.map((s: any) => (
+                <label key={s.key} style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  background: selectedSessions.has(s.key) ? 'var(--accent-bg, rgba(59,130,246,0.1))' : undefined,
+                }}>
+                  <input type="checkbox" checked={selectedSessions.has(s.key)} onChange={() => toggleSessionSelect(s.key)} />
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{s.label || s.key}</span>
+                </label>
               ))}
             </div>
-          ))}
-          {sending && (
-            <div style={{ padding: 'var(--space-3)', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-              🤖 <span className="skeleton" style={{ width: 120, height: 14, display: 'inline-block' }} />
-            </div>
-          )}
-          <div ref={bottomRef} />
+            {selectedSessions.size > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{selectedSessions.size} selected</div>
+            )}
+            <textarea className="form-input" style={{ width: '100%', minHeight: 80, marginBottom: 8, resize: 'vertical' }}
+              value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)} placeholder={t('chat.broadcastMessage')} />
+            <button className="btn btn-primary" onClick={handleBroadcast} disabled={!broadcastMsg.trim() || selectedSessions.size === 0}>
+              {t('chat.sendBroadcast')}
+            </button>
+          </div>
         </div>
+      )}
 
-        <div style={{ borderTop: '1px solid var(--border-color)', padding: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-          <input
-            className="form-input" style={{ flex: 1 }}
-            value={input} onChange={e => setInput(e.target.value)}
-            placeholder={t('chat.placeholder')}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            disabled={sending}
-          />
-          {sending && (
-            <button className="btn btn-danger" onClick={handleAbort} disabled={aborting}>{t('chat.abort')}</button>
-          )}
-          <button className="btn btn-primary" onClick={handleSend} disabled={sending || !input.trim()}>{t('chat.send')}</button>
+      {/* Bookmarks Tab */}
+      {tab === 'bookmarks' && (
+        <div className="card" style={{ flex: 1, overflow: 'auto' }}>
+          <div className="card-body">
+            {bookmarks.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 32 }}>{t('app.no_data')}</div>
+            ) : bookmarks.map((b: any) => (
+              <div key={b.id} style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--status-blue)' }}>{b.session_key}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{new Date(b.bookmarked_at).toLocaleString()}</span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{b.content}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
