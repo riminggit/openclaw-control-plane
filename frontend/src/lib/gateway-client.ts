@@ -27,6 +27,8 @@ export class GatewayClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectDelay = 1000
   private shouldReconnect = false
+  private reconnectCount = 0
+  private maxReconnects = 20
   private _stateListeners: Set<(state: ConnectionState) => void> = new Set()
 
   get state() { return this._state }
@@ -50,6 +52,7 @@ export class GatewayClient {
     this.disconnect()
     this.shouldReconnect = true
     this.reconnectDelay = 1000
+    this.reconnectCount = 0
     this._doConnect()
   }
 
@@ -94,6 +97,10 @@ export class GatewayClient {
     if (msg.type === 'event' && msg.event === 'gateway.connected') {
       this.setState('connected')
       this.reconnectDelay = 1000
+      return
+    }
+    // P1-V2-3: Ignore system events (health/tick) — they don't need client processing
+    if (msg.type === 'event' && (msg.event === 'health' || msg.event === 'tick')) {
       return
     }
     if (msg.type === 'res') {

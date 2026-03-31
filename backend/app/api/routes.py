@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from sqlalchemy import text
 
 from app.db import get_db, Project, Task
@@ -108,8 +109,15 @@ def list_projects(
     page_size: int = Query(50, ge=1, le=200),
 ):
     total = db.query(Project).count()
-    rows = db.query(Project).order_by(Project.updated_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
-    items = [_project_to_item(p, db.query(Task).filter(Task.project_id == p.id).count(), db.query(Task).filter(Task.project_id == p.id, Task.status == "blocked").count()) for p in rows]
+    # P1-V2-1: Fix N+1 — use subqueries instead of per-row COUNT
+    task_count_sq = db.query(Task.project_id, func.count().label("cnt")).group_by(Task.project_id).subquery()
+    blocked_count_sq = db.query(Task.project_id, func.count().label("cnt")).filter(Task.status == "blocked").group_by(Task.project_id).subquery()
+    rows = (db.query(Project, func.coalesce(task_count_sq.c.cnt, 0), func.coalesce(blocked_count_sq.c.cnt, 0))
+            .outerjoin(task_count_sq, Project.id == task_count_sq.c.project_id)
+            .outerjoin(blocked_count_sq, Project.id == blocked_count_sq.c.project_id)
+            .order_by(Project.updated_at.desc())
+            .offset((page - 1) * page_size).limit(page_size).all())
+    items = [_project_to_item(p, tc, bc) for p, tc, bc in rows]
     return ProjectListResponse(items=items, total=total, page=page, page_size=page_size)
 
 
@@ -181,10 +189,10 @@ def list_tasks(
     if category:
         q = q.filter(Task.category == category)
     total = q.count()
-    # P2-3: Pre-load projects to avoid N+1
-    project_ids = [t.project_id for t in q.with_entities(Task.project_id, Project).all() if t.project_id]
-    projects = {p.id: p for p in db.query(Project).filter(Project.id.in_(project_ids)).all()} if project_ids else {}
     rows = q.order_by(Task.updated_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    # P1-V2-2: Fix with_entities bug — batch load projects after fetching tasks
+    project_ids = list(set(t.project_id for t in rows if t.project_id))
+    projects = {p.id: p for p in db.query(Project).filter(Project.id.in_(project_ids)).all()} if project_ids else {}
     items = [_task_to_item(t, projects.get(t.project_id)) for t in rows]
     return TaskListResponse(items=items, total=total, page=page, page_size=page_size)
 

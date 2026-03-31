@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSessions, useConnectionState } from '../hooks/useGateway'
 import { Link } from 'react-router-dom'
@@ -5,7 +6,9 @@ import { Link } from 'react-router-dom'
 export function SessionsPage() {
   const { t } = useTranslation()
   const connState = useConnectionState()
-  const { sessions, loading } = useSessions(50)
+  const { sessions, count, loading, refetch } = useSessions(200)
+  const [search, setSearch] = useState('')
+  const [filterKind, setFilterKind] = useState('')
 
   if (connState !== 'connected') {
     return (
@@ -17,51 +20,91 @@ export function SessionsPage() {
     )
   }
 
-  const total = sessions.length
+  // Extract unique kinds for filter
+  const kinds = useMemo(() => {
+    const set = new Set<string>()
+    sessions.forEach((s: any) => { if (s.kind) set.add(s.kind) })
+    return Array.from(set).sort()
+  }, [sessions])
+
+  // Filter sessions
+  const filtered = useMemo(() => {
+    return sessions.filter((s: any) => {
+      const matchSearch = !search ||
+        (s.key || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.displayName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.label || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.kind || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.channel || '').toLowerCase().includes(search.toLowerCase())
+      const matchKind = !filterKind || s.kind === filterKind
+      return matchSearch && matchKind
+    })
+  }, [sessions, search, filterKind])
 
   return (
     <div>
       <div className="page-header">
         <p className="page-header-eyebrow">{t('sessions.eyebrow')}</p>
-        <h1>{t('sessions.title')}</h1>
+        <h1>{t('sessions.title')} <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>({count})</span></h1>
         <p className="page-header-desc">{t('sessions.subtitle')}</p>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          className="form-input"
+          style={{ maxWidth: 300 }}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder={t('sessions.search_placeholder')}
+        />
+        {kinds.length > 1 && (
+          <select className="form-input" value={filterKind} onChange={e => setFilterKind(e.target.value)} style={{ minWidth: 150 }}>
+            <option value="">{t('sessions.all_kinds')}</option>
+            {kinds.map(k => <option key={k} value={k}>{k}</option>)}
+          </select>
+        )}
+        <button className="btn btn-ghost" onClick={refetch} disabled={loading}>🔄 {t('app.retry')}</button>
+        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('app.total', { count: filtered.length })}</span>
       </div>
 
       <div className="card">
         {loading ? (
           <div className="card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>{t('app.loading')}</div>
-        ) : total === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="card-body empty-state" style={{ padding: 'var(--space-10)' }}>
             <div className="empty-state-icon">💬</div>
-            <div className="empty-state-desc">{t('sessions.no_sessions')}</div>
+            <div className="empty-state-desc">{search || filterKind ? t('sessions.no_match') : t('sessions.no_sessions')}</div>
           </div>
         ) : (
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>{t('sessions.label')}</th>
                   <th>{t('sessions.key')}</th>
                   <th>{t('sessions.agent')}</th>
                   <th>{t('sessions.channel')}</th>
-                  <th>{t('sessions.tokens')}</th>
+                  <th>{t('sessions.state')}</th>
                   <th>{t('sessions.last_active')}</th>
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((s: any, i: number) => {
+                {filtered.map((s: any, i: number) => {
                   const key = s.key || s.sessionKey
                   return (
                     <tr key={key || i}>
+                      <td style={{ fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.displayName || s.label || '-'}
+                      </td>
                       <td className="mono" style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <Link to={`/sessions/${encodeURIComponent(key)}`}>{key}</Link>
                       </td>
-                      <td>{s.kind || s.label || '-'}</td>
+                      <td>{s.kind || '-'}</td>
                       <td>{s.channel || '-'}</td>
+                      <td><span className={`badge badge-${s.active || s.state === 'active' ? 'active' : 'archived'}`}>{s.active ? 'Active' : (s.state || '-')}</span></td>
                       <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                        {s.totalTokens ? `${(s.totalTokens / 1000).toFixed(1)}k` : '-'}
-                      </td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                        {s.updatedAt ? new Date(s.updatedAt).toLocaleString() : '-'}
+                        {(s.updatedAtMs || s.updatedAt || s.lastActive) ? new Date(s.updatedAtMs || s.updatedAt || s.lastActive).toLocaleString() : '-'}
                       </td>
                     </tr>
                   )

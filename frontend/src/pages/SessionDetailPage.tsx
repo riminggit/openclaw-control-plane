@@ -4,12 +4,27 @@ import { useTranslation } from 'react-i18next'
 import { useConnectionState } from '../hooks/useGateway'
 import { gatewayClient } from '../lib/gateway-client'
 
+/** Render message content which can be string, array of content blocks, or other */
+function renderContent(content: any): string {
+  if (!content) return ''
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    return content.map((block: any) => {
+      if (block.type === 'text' && block.text) return block.text
+      if (block.type === 'toolCall') return `🔧 ${block.name || 'tool'}(${JSON.stringify(block.arguments || {}).slice(0, 200)})`
+      if (block.type === 'toolResult') return block.content ? String(block.content).slice(0, 200) : '✓ (no output)'
+      if (block.type === 'thinking') return `💭 ${block.thinking || ''}`
+      return JSON.stringify(block).slice(0, 200)
+    }).join('\n')
+  }
+  return JSON.stringify(content, null, 2).slice(0, 2000)
+}
+
 export function SessionDetailPage() {
   const { t } = useTranslation()
   const { key } = useParams<{ key: string }>()
   const connState = useConnectionState()
   const [messages, setMessages] = useState<any[]>([])
-  const [sessionInfo, setSessionInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [inputMsg, setInputMsg] = useState('')
   const [sending, setSending] = useState(false)
@@ -73,6 +88,7 @@ export function SessionDetailPage() {
       {/* Actions */}
       <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
         <button className="btn btn-danger" onClick={handleAbort}>{t('session_detail.abort')}</button>
+        <button className="btn btn-ghost" onClick={fetchHistory}>🔄 {t('app.retry')}</button>
         <button className="btn btn-secondary" onClick={() => { setEditModel(''); setEditThinking('off'); setEditing(!editing) }}>
           {t('session_detail.edit_config')}
         </button>
@@ -115,14 +131,13 @@ export function SessionDetailPage() {
               <div key={i} style={{ padding: 'var(--space-3)', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
                   <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>
-                    {msg.role === 'user' ? '👤' : msg.role === 'assistant' ? '🤖' : '🔧'} {msg.role}
-                    {msg.toolName && <span className="badge badge-active" style={{ marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)' }}>{msg.toolName}</span>}
+                    {msg.role === 'user' ? '👤' : msg.role === 'assistant' ? '🤖' : msg.role === 'tool' ? '🔧' : '📝'} {msg.role}
                   </span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>{msg.timestamp ? new Date(msg.timestamp).toLocaleString() : ''}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>{msg.ts ? new Date(msg.ts).toLocaleString() : ''}</span>
                 </div>
-                <div style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)', wordBreak: 'break-word' }}>
-                  {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content, null, 2)}
-                </div>
+                <pre style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)', wordBreak: 'break-word', fontFamily: 'inherit', margin: 0 }}>
+                  {renderContent(msg.content)}
+                </pre>
               </div>
             ))}
           </div>

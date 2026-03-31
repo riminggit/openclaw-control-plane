@@ -54,7 +54,10 @@
     "project_list": "Project List",
     "recent_tasks": "Recent Tasks (Top 10)",
     "no_projects": "No projects yet",
-    "no_tasks": "No tasks yet"
+    "no_tasks": "No tasks yet",
+    "cron_jobs": "Cron Jobs",
+    "available_models": "Available Models",
+    "runtime_version": "Runtime Version"
   },
   "sessions": {
     "eyebrow": "Session Management",
@@ -66,8 +69,12 @@
     "messages": "Messages",
     "last_active": "Last Active",
     "no_sessions": "No sessions",
+    "no_match": "No matching sessions",
     "channel": "Channel",
-    "tokens": "Tokens"
+    "tokens": "Tokens",
+    "label": "Label",
+    "all_kinds": "All Kinds",
+    "search_placeholder": "Search sessions..."
   },
   "session_detail": {
     "title": "Session Detail",
@@ -100,7 +107,12 @@
     "confirm_delete": "Delete this cron job?",
     "form_name": "Job Name",
     "form_schedule": "Schedule (e.g. */5 * * * *)",
-    "form_payload": "Payload (JSON)"
+    "form_payload": "Payload (JSON)",
+    "schedule_type": "Schedule Type",
+    "err_name": "Job name required",
+    "err_schedule": "Cron expression required",
+    "err_at": "Execution time required",
+    "err_every": "Interval (minutes) required"
   },
   "chat": {
     "title": "Agent Chat",

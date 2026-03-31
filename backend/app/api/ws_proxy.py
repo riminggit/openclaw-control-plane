@@ -223,6 +223,25 @@ def _auto_approve_pairing(request_id: str) -> bool:
 
 @router.websocket("/ws/gateway")
 async def ws_gateway_proxy(client_ws: WebSocket):
+    # P0-V2-2: Origin validation to prevent unauthorized cross-site WebSocket connections
+    origin = client_ws.headers.get("origin", "")
+    host = client_ws.headers.get("host", "")
+    if origin:
+        # Extract hostname from origin (e.g., "https://example.com" -> "example.com")
+        from urllib.parse import urlparse
+        origin_host = urlparse(origin).hostname
+        request_host = host.split(":")[0] if host else ""
+        # Allow same-origin connections or from configured CORS origins
+        allowed_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+        if not (
+            (origin_host and request_host and origin_host == request_host) or
+            origin in allowed_origins or
+            any(urlparse(o).hostname == origin_host for o in allowed_origins)
+        ):
+            logger.warning("WebSocket rejected: origin=%s host=%s", origin, host)
+            await client_ws.close(code=1008, reason="Origin not allowed")
+            return
+
     await client_ws.accept()
 
     gateway_url = _get_gateway_ws_url()

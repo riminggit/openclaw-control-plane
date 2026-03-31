@@ -7,5 +7,5 @@ __pycache__/
 *.pyc
 docs/_quarantine/
 *.bak
-device.json >> .gitignore
-device-auth.json >> .gitignore
+device.json
+device-auth.json

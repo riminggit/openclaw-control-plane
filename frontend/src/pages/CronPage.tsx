@@ -1,25 +1,72 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCronJobs, useConnectionState } from '../hooks/useGateway'
 import { gatewayClient } from '../lib/gateway-client'
 
+type ScheduleType = 'cron' | 'at' | 'every'
+
 export function CronPage() {
   const { t } = useTranslation()
   const connState = useConnectionState()
-  const { jobs, loading, refetch } = useCronJobs()
+  const { jobs, total, loading, refetch } = useCronJobs()
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', schedule: '', payload: '' })
+  const [form, setForm] = useState({
+    name: '',
+    scheduleType: 'cron' as ScheduleType,
+    cronExpr: '',
+    atTime: '',
+    everyInterval: '',
+    agentId: '',
+    message: '',
+  })
   const [runs, setRuns] = useState<any[]>([])
   const [showRuns, setShowRuns] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  const buildPayload = () => {
+    let schedule: any = {}
+    switch (form.scheduleType) {
+      case 'cron':
+        schedule = { kind: 'cron', expr: form.cronExpr, tz: 'Asia/Shanghai' }
+        break
+      case 'at':
+        schedule = { kind: 'at', at: form.atTime }
+        break
+      case 'every':
+        schedule = { kind: 'every', everyMs: form.everyInterval ? parseInt(form.everyInterval) * 60000 : undefined }
+        break
+    }
+
+    const job: any = {
+      name: form.name,
+      schedule,
+      payload: {
+        kind: 'agentTurn',
+        message: form.message || '',
+      },
+      sessionTarget: 'isolated',
+      wakeMode: 'now',
+    }
+    if (form.agentId) job.agentId = form.agentId
+
+    return job
+  }
 
   const handleCreate = async () => {
-    if (!form.name || !form.schedule) return
+    setError('')
+    if (!form.name) { setError(t('cron.err_name')); return }
+    if (form.scheduleType === 'cron' && !form.cronExpr) { setError(t('cron.err_schedule')); return }
+    if (form.scheduleType === 'at' && !form.atTime) { setError(t('cron.err_at')); return }
+    if (form.scheduleType === 'every' && !form.everyInterval) { setError(t('cron.err_every')); return }
+
     try {
-      await gatewayClient.call('cron.add', { name: form.name, schedule: form.schedule, payload: form.payload || '{}' })
+      await gatewayClient.call('cron.add', { job: buildPayload() })
       setShowForm(false)
-      setForm({ name: '', schedule: '', payload: '' })
+      setForm({ name: '', scheduleType: 'cron', cronExpr: '', atTime: '', everyInterval: '', agentId: '', message: '' })
       refetch()
-    } catch { /* */ }
+    } catch (e: any) {
+      setError(e?.message || t('app.error'))
+    }
   }
 
   const handleDelete = async (jobId: string) => {
@@ -43,6 +90,15 @@ export function CronPage() {
     } catch { /* */ }
   }
 
+  const formatSchedule = (s: any) => {
+    if (!s) return '-'
+    if (typeof s === 'string') return s
+    if (s.kind === 'cron') return `${s.expr} (${s.tz || 'UTC'})`
+    if (s.kind === 'at') return `at ${s.at}`
+    if (s.kind === 'every') return `every ${s.everyMs ? `${Math.round(s.everyMs / 60000)}min` : '-'}`
+    return JSON.stringify(s)
+  }
+
   if (connState !== 'connected') {
     return (
       <div className="empty-state">
@@ -57,14 +113,15 @@ export function CronPage() {
     <div>
       <div className="page-header">
         <p className="page-header-eyebrow">{t('cron.eyebrow')}</p>
-        <h1>{t('cron.title')}</h1>
+        <h1>{t('cron.title')} <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>({total})</span></h1>
         <p className="page-header-desc">{t('cron.subtitle')}</p>
       </div>
 
-      <div style={{ marginBottom: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
         <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
           {showForm ? t('app.cancel') : `+ ${t('cron.new_job')}`}
         </button>
+        <button className="btn btn-ghost" onClick={refetch} disabled={loading}>🔄</button>
       </div>
 
       {showForm && (
@@ -72,9 +129,31 @@ export function CronPage() {
           <div className="card-header"><h2>{t('cron.create_job')}</h2></div>
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('cron.form_name')} />
-            <input className="form-input" value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value })} placeholder={t('cron.form_schedule')} />
-            <textarea className="form-input" value={form.payload} onChange={e => setForm({ ...form, payload: e.target.value })} placeholder={t('cron.form_payload')} rows={3} />
-            <button className="btn btn-primary" onClick={handleCreate} disabled={!form.name || !form.schedule}>{t('app.create')}</button>
+
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <label style={{ fontWeight: 500, minWidth: 80 }}>{t('cron.schedule_type')}:</label>
+              <select className="form-input" value={form.scheduleType} onChange={e => setForm({ ...form, scheduleType: e.target.value as ScheduleType })} style={{ minWidth: 120 }}>
+                <option value="cron">Cron 表达式</option>
+                <option value="at">At 时间</option>
+                <option value="every">Every 间隔</option>
+              </select>
+            </div>
+
+            {form.scheduleType === 'cron' && (
+              <input className="form-input" value={form.cronExpr} onChange={e => setForm({ ...form, cronExpr: e.target.value })} placeholder="55 8 * * 1-5" />
+            )}
+            {form.scheduleType === 'at' && (
+              <input className="form-input" type="datetime-local" value={form.atTime} onChange={e => setForm({ ...form, atTime: e.target.value })} />
+            )}
+            {form.scheduleType === 'every' && (
+              <input className="form-input" type="number" value={form.everyInterval} onChange={e => setForm({ ...form, everyInterval: e.target.value })} placeholder="30 (分钟)" min="1" />
+            )}
+
+            <input className="form-input" value={form.agentId} onChange={e => setForm({ ...form, agentId: e.target.value })} placeholder="Agent ID (可选，默认 main)" />
+            <textarea className="form-input" value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="任务消息内容 (Agent Turn)" rows={3} />
+
+            {error && <div style={{ color: 'var(--status-red)', fontSize: 'var(--text-sm)' }}>{error}</div>}
+            <button className="btn btn-primary" onClick={handleCreate}>{t('app.create')}</button>
           </div>
         </div>
       )}
@@ -103,11 +182,11 @@ export function CronPage() {
                 {jobs.map((job: any, i: number) => (
                   <tr key={job.id || job.jobId || i}>
                     <td style={{ fontWeight: 500 }}>{job.name || '-'}</td>
-                    <td className="mono" style={{ fontSize: 'var(--text-sm)' }}>{job.schedule || '-'}</td>
+                    <td className="mono" style={{ fontSize: 'var(--text-sm)' }}>{formatSchedule(job.schedule)}</td>
                     <td><span className={`badge badge-${job.enabled !== false ? 'active' : 'archived'}`}>{job.enabled !== false ? 'Enabled' : 'Disabled'}</span></td>
                     <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{job.nextRun ? new Date(job.nextRun).toLocaleString() : '-'}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                         <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)' }} onClick={() => handleToggle(job.id || job.jobId, job.enabled !== false)}>
                           {job.enabled !== false ? t('cron.disable') : t('cron.enable')}
                         </button>
@@ -127,7 +206,7 @@ export function CronPage() {
       {showRuns && (
         <div className="card" style={{ marginTop: 'var(--space-4)' }}>
           <div className="card-header">
-            <h2>{t('cron.runs_history')} - {showRuns}</h2>
+            <h2>{t('cron.runs_history')}</h2>
             <button className="btn btn-ghost" onClick={() => setShowRuns(null)}>✕</button>
           </div>
           <div className="card-body" style={{ maxHeight: 300, overflow: 'auto' }}>
@@ -136,8 +215,9 @@ export function CronPage() {
             ) : runs.map((r: any, i: number) => (
               <div key={i} style={{ padding: 'var(--space-2)', borderBottom: '1px solid var(--border-color)', fontSize: 'var(--text-sm)' }}>
                 <span style={{ color: r.ok === false ? 'var(--status-red)' : 'var(--status-green)' }}>{r.ok === false ? '✗' : '✓'}</span>
-                {' '}{r.timestamp ? new Date(r.timestamp).toLocaleString() : '-'}{' '}
-                <span style={{ color: 'var(--text-muted)' }}>{r.duration ? `${r.duration}ms` : ''}</span>
+                {' '}{r.timestampMs || r.timestamp ? new Date(r.timestampMs || r.timestamp).toLocaleString() : '-'}{' '}
+                <span style={{ color: 'var(--text-muted)' }}>{r.durationMs || r.duration ? `${r.durationMs || r.duration}ms` : ''}</span>
+                {r.error && <div style={{ color: 'var(--status-red)', fontSize: 'var(--text-xs)' }}>{r.error}</div>}
               </div>
             ))}
           </div>
