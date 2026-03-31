@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useGateway, useConnectionState } from '../hooks/useGateway'
+import { useConnectionState } from '../hooks/useGateway'
 import { gatewayClient } from '../lib/gateway-client'
 
 export function SessionDetailPage() {
   const { t } = useTranslation()
   const { key } = useParams<{ key: string }>()
   const connState = useConnectionState()
-  const [history, setHistory] = useState<any[]>([])
+  const [messages, setMessages] = useState<any[]>([])
   const [sessionInfo, setSessionInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [inputMsg, setInputMsg] = useState('')
@@ -20,9 +20,8 @@ export function SessionDetailPage() {
   const fetchHistory = useCallback(async () => {
     if (!key) return
     try {
-      const res = await gatewayClient.call('sessions.history', { sessionKey: key, limit: 100, includeTools: true })
-      setHistory(res?.messages || res?.history || res || [])
-      if (res?.session) setSessionInfo(res.session)
+      const res = await gatewayClient.call('sessions.get', { sessionKey: key, limit: 100, includeTools: true })
+      setMessages(res?.messages || [])
     } catch { /* */ } finally { setLoading(false) }
   }, [key])
 
@@ -34,12 +33,12 @@ export function SessionDetailPage() {
     try {
       await gatewayClient.call('sessions.send', { sessionKey: key, message: inputMsg.trim() })
       setInputMsg('')
-      setTimeout(fetchHistory, 1000)
+      setTimeout(fetchHistory, 1500)
     } catch { /* */ } finally { setSending(false) }
   }
 
   const handleAbort = async () => {
-    try { await gatewayClient.call('chat.abort', {}) } catch { /* */ }
+    try { await gatewayClient.call('sessions.abort', { sessionKey: key }) } catch { /* */ }
   }
 
   const handlePatch = async () => {
@@ -68,22 +67,21 @@ export function SessionDetailPage() {
     <div>
       <div className="page-header">
         <Link to="/sessions" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: 'var(--text-sm)' }}>{t('app.back')}</Link>
-        <h1 style={{ marginTop: 'var(--space-2)' }}>{t('session_detail.title')}：{key}</h1>
-        <p className="page-header-desc">{sessionInfo?.agent || sessionInfo?.kind || ''}</p>
+        <h1 style={{ marginTop: 'var(--space-2)', wordBreak: 'break-all' }}>{t('session_detail.title')}：{key}</h1>
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
         <button className="btn btn-danger" onClick={handleAbort}>{t('session_detail.abort')}</button>
-        <button className="btn btn-secondary" onClick={() => { setEditModel(sessionInfo?.model || ''); setEditThinking(sessionInfo?.thinking ? 'on' : 'off'); setEditing(!editing) }}>
+        <button className="btn btn-secondary" onClick={() => { setEditModel(''); setEditThinking('off'); setEditing(!editing) }}>
           {t('session_detail.edit_config')}
         </button>
       </div>
 
       {editing && (
         <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
-          <div className="card-body" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'end' }}>
-            <div style={{ flex: 1 }}>
+          <div className="card-body" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'end', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
               <label style={{ display: 'block', fontWeight: 500, marginBottom: 'var(--space-1)' }}>{t('session_detail.model')}</label>
               <input className="form-input" style={{ width: '100%' }} value={editModel} onChange={e => setEditModel(e.target.value)} placeholder="model name" />
             </div>
@@ -99,35 +97,32 @@ export function SessionDetailPage() {
         </div>
       )}
 
-      {/* History */}
+      {/* Messages */}
       <div className="card">
-        <div className="card-header"><h2>{t('session_detail.history')}</h2></div>
+        <div className="card-header">
+          <h2>{t('session_detail.history')}</h2>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('app.total', { count: messages.length })}</span>
+        </div>
         {loading ? (
           <div className="card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>{t('app.loading')}</div>
-        ) : history.length === 0 ? (
+        ) : messages.length === 0 ? (
           <div className="card-body empty-state" style={{ padding: 'var(--space-10)' }}>
             <div className="empty-state-desc">{t('session_detail.no_history')}</div>
           </div>
         ) : (
           <div className="card-body" style={{ maxHeight: 600, overflow: 'auto' }}>
-            {history.map((msg: any, i: number) => (
+            {messages.map((msg: any, i: number) => (
               <div key={i} style={{ padding: 'var(--space-3)', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
-                  <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>{msg.role || msg.author || 'unknown'}</span>
+                  <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>
+                    {msg.role === 'user' ? '👤' : msg.role === 'assistant' ? '🤖' : '🔧'} {msg.role}
+                    {msg.toolName && <span className="badge badge-active" style={{ marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)' }}>{msg.toolName}</span>}
+                  </span>
                   <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>{msg.timestamp ? new Date(msg.timestamp).toLocaleString() : ''}</span>
                 </div>
-                <div style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>
+                <div style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)', wordBreak: 'break-word' }}>
                   {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content, null, 2)}
                 </div>
-                {msg.toolCalls && msg.toolCalls.length > 0 && (
-                  <div style={{ marginTop: 'var(--space-2)' }}>
-                    {msg.toolCalls.map((tc: any, j: number) => (
-                      <span key={j} className="badge badge-active" style={{ marginRight: 'var(--space-1)', fontSize: 'var(--text-xs)' }}>
-                        🔧 {tc.name || tc.function?.name || 'tool'}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -137,7 +132,7 @@ export function SessionDetailPage() {
       {/* Send message */}
       <div className="card" style={{ marginTop: 'var(--space-4)' }}>
         <div className="card-body" style={{ display: 'flex', gap: 'var(--space-3)' }}>
-          <input className="form-input" style={{ flex: 1 }} value={inputMsg} onChange={e => setInputMsg(e.target.value)} placeholder={t('session_detail.send_placeholder')} onKeyDown={e => e.key === 'Enter' && handleSend()} />
+          <input className="form-input" style={{ flex: 1 }} value={inputMsg} onChange={e => setInputMsg(e.target.value)} placeholder={t('session_detail.send_placeholder')} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()} />
           <button className="btn btn-primary" onClick={handleSend} disabled={sending || !inputMsg.trim()}>{sending ? '...' : t('session_detail.send')}</button>
         </div>
       </div>

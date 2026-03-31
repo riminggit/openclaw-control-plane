@@ -21,7 +21,8 @@ export function useSessions(limit = 50) {
     setLoading(true)
     try {
       const res = await gatewayClient.call('sessions.list', { limit, activeMinutes: 1440 })
-      setSessions(Array.isArray(res) ? res : res?.sessions || [])
+      const sessions = res?.sessions || (Array.isArray(res) ? res : [])
+      setSessions(sessions)
     } catch { /* ignore */ } finally { setLoading(false) }
   }, [connState, limit])
 
@@ -73,7 +74,8 @@ export function useCronJobs() {
     setLoading(true)
     try {
       const res = await gatewayClient.call('cron.list', { includeDisabled: true })
-      setJobs(Array.isArray(res) ? res : res?.jobs || [])
+      const jobs = res?.jobs || (Array.isArray(res) ? res : [])
+      setJobs(jobs)
     } catch { /* */ } finally { setLoading(false) }
   }, [connState])
 

@@ -65,7 +65,9 @@
     "state": "状态",
     "messages": "消息数",
     "last_active": "最后活跃",
-    "no_sessions": "暂无会话"
+    "no_sessions": "暂无会话",
+    "channel": "频道",
+    "tokens": "Token"
   },
   "session_detail": {
     "title": "会话详情",

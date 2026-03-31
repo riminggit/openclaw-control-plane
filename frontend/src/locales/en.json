@@ -65,7 +65,9 @@
     "state": "State",
     "messages": "Messages",
     "last_active": "Last Active",
-    "no_sessions": "No sessions"
+    "no_sessions": "No sessions",
+    "channel": "Channel",
+    "tokens": "Tokens"
   },
   "session_detail": {
     "title": "Session Detail",
