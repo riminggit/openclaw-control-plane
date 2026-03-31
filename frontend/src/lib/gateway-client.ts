@@ -87,8 +87,14 @@ export class GatewayClient {
   }
 
   private _handleMessage(msg: any) {
+    if (msg.type === 'event' && msg.event === 'gateway.connected') {
+      // Backend successfully authenticated with Gateway
+      this.setState('connected')
+      this.reconnectDelay = 1000
+      return
+    }
     if (msg.type === 'res') {
-      if (msg.id === 0) {
+      if (msg.id === 0 || msg.id === 'connect-1' || String(msg.id).startsWith('connect-')) {
         // connect response (brokered by backend proxy)
         if (msg.ok) {
           this.setState('connected')
