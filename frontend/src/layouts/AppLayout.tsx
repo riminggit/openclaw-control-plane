@@ -70,7 +70,7 @@ export function AppLayout() {
             </svg>
             {!collapsed && <span>{t('app.brand')}</span>}
           </div>
-          <button className="sidebar-toggle" onClick={() => setCollapsed(!collapsed)} title="Toggle sidebar">
+          <button className="sidebar-toggle" onClick={() => setCollapsed(!collapsed)} title={t("nav.toggle_sidebar")}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }}>
               <path d="M9 5l7 7-7 7" />
             </svg>

@@ -90,8 +90,8 @@ export function SessionDetailPage() {
             <div>
               <label style={{ display: 'block', fontWeight: 500, marginBottom: 'var(--space-1)' }}>{t('session_detail.thinking')}</label>
               <select className="form-input" value={editThinking} onChange={e => setEditThinking(e.target.value)}>
-                <option value="on">On</option>
-                <option value="off">Off</option>
+                <option value="on">{t("app.on")}</option>
+                <option value="off">{t("app.off")}</option>
               </select>
             </div>
             <button className="btn btn-primary" onClick={handlePatch}>{t('app.save')}</button>

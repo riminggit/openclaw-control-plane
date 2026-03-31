@@ -109,7 +109,7 @@ export function TasksPage() {
 
       {error && (
         <div className="card">
-          <div className="card-body" style={{ color: 'var(--status-red)' }}>Error: {error}</div>
+          <div className="card-body" style={{ color: 'var(--status-red)' }}>{t("app.error")}: {error}</div>
         </div>
       )}
 

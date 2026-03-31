@@ -49,7 +49,7 @@ export function ProjectDetailPage() {
     <div className="card">
       <div className="empty-state">
         <div className="empty-state-icon">⚠️</div>
-        <div className="empty-state-title">Error</div>
+        <div className="empty-state-title">{t("app.error")}</div>
         <div className="empty-state-desc">{error}</div>
       </div>
     </div>

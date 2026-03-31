@@ -16,7 +16,9 @@
     "created": "Created",
     "updated": "Updated",
     "back": "← Back to list",
-    "error": "Error"
+    "error": "Error",
+    "on": "On",
+    "off": "Off"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -28,7 +30,8 @@
     "collapse": "Collapse",
     "projects": "Projects",
     "tasks": "Tasks",
-    "kanban": "Kanban"
+    "kanban": "Kanban",
+    "toggle_sidebar": "Collapse"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime Control Plane",
@@ -155,5 +158,8 @@
     "done": "Done",
     "active": "Active",
     "archived": "Archived"
+  },
+  "tasks": {
+    "owner_placeholder": "e.g. rd-backend-dev"
   }
 }

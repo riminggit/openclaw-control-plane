@@ -102,12 +102,12 @@ export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
             </div>
             <div className="form-group">
               <label>{t('tasks.detail.phase')}</label>
-              <input value={phase} onChange={e => setPhase(e.target.value)} placeholder="e.g. Sprint 1" />
+              <input value={phase} onChange={e => setPhase(e.target.value)} placeholder={t("tasks.detail.phase_placeholder")} />
             </div>
           </div>
           <div className="form-group">
             <label>{t('tasks.owner')}</label>
-            <input value={ownerRole} onChange={e => setOwnerRole(e.target.value)} placeholder="e.g. rd-backend-dev" />
+            <input value={ownerRole} onChange={e => setOwnerRole(e.target.value)} placeholder={t("tasks.owner_placeholder")} />
           </div>
           {error && <div className="form-error">{error}</div>}
           <div className="form-actions">

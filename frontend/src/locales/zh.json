@@ -16,7 +16,9 @@
     "created": "创建时间",
     "updated": "更新时间",
     "back": "← 返回列表",
-    "error": "错误"
+    "error": "错误",
+    "on": "开",
+    "off": "关"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -28,7 +30,8 @@
     "collapse": "收起",
     "projects": "项目",
     "tasks": "任务",
-    "kanban": "看板"
+    "kanban": "看板",
+    "toggle_sidebar": "收起侧边栏"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime 控制平面",
@@ -107,7 +110,7 @@
     "title": "Gateway 设置",
     "subtitle": "配置 OpenClaw Gateway WebSocket 连接",
     "config": "连接配置",
-    "url_label": "Gateway URL",
+    "url_label": "Gateway 地址",
     "token_label": "Gateway Token",
     "test_btn": "测试连接",
     "connect": "连接",
@@ -155,5 +158,8 @@
     "done": "已完成",
     "active": "进行中",
     "archived": "已归档"
+  },
+  "tasks": {
+    "owner_placeholder": "例如 rd-backend-dev"
   }
 }
