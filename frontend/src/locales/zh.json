@@ -9,8 +9,6 @@
     "delete": "删除",
     "edit": "编辑",
     "actions": "操作",
-    "confirm_delete_project": "确定要删除该项目及其所有任务吗？",
-    "confirm_delete_task": "确定要删除该任务吗？",
     "search": "搜索...",
     "no_data": "暂无数据",
     "total": "共 {{count}} 条",
@@ -22,16 +20,28 @@
   },
   "nav": {
     "dashboard": "仪表盘",
+    "sessions": "会话",
+    "cron": "定时任务",
+    "chat": "聊天",
+    "settings": "设置",
+    "main": "主要",
+    "collapse": "收起",
     "projects": "项目",
     "tasks": "任务",
-    "kanban": "看板",
-    "main": "主要",
-    "collapse": "收起"
+    "kanban": "看板"
   },
   "dashboard": {
-    "eyebrow": "OpenClaw Runtime 上层控制平面",
+    "eyebrow": "OpenClaw Runtime 控制平面",
     "title": "OpenClaw 控制面板",
-    "subtitle": "MVP 实时数据面板 — 后端已接入真实 API",
+    "subtitle": "Gateway 实时数据面板",
+    "active_sessions": "活跃会话",
+    "total_sessions": "总会话数",
+    "model": "当前模型",
+    "recent_sessions": "最近会话",
+    "view_all": "查看全部",
+    "no_sessions": "暂无活跃会话",
+    "not_connected": "Gateway 未连接",
+    "connect_hint": "请先前往设置页面配置 Gateway 连接",
     "projects": "项目数",
     "tasks_count": "任务数",
     "blocked": "阻塞任务",
@@ -41,61 +51,76 @@
     "no_projects": "暂无项目",
     "no_tasks": "暂无任务"
   },
-  "projects": {
-    "eyebrow": "项目管理",
-    "title": "项目列表",
-    "subtitle": "管理项目并查看任务分解",
-    "new_project": "+ 新建项目",
-    "code": "编码",
-    "name": "名称",
-    "status": "状态",
-    "tasks": "任务数",
-    "blocked": "阻塞",
-    "owner": "负责人",
-    "no_projects": "暂无项目，点击右上角创建",
-    "form_title": "新建项目",
-    "form_code": "项目编码 *",
-    "form_name": "项目名称 *",
-    "form_desc": "描述",
-    "form_code_placeholder": "OCP",
-    "form_name_placeholder": "项目名称",
-    "form_desc_placeholder": "可选",
-    "detail": {
-      "info": "项目信息",
-      "description": "描述",
-      "no_description": "暂无描述",
-      "tasks_list": "任务列表",
-      "no_tasks": "该项目暂无任务"
-    }
+  "sessions": {
+    "eyebrow": "会话管理",
+    "title": "会话列表",
+    "subtitle": "管理 OpenClaw Agent 会话",
+    "key": "会话 Key",
+    "agent": "Agent",
+    "state": "状态",
+    "messages": "消息数",
+    "last_active": "最后活跃",
+    "no_sessions": "暂无会话"
   },
-  "tasks": {
-    "eyebrow": "任务管理",
-    "title": "任务列表",
-    "subtitle": "查看和管理所有项目任务",
-    "new_task": "新建任务",
-    "title_col": "标题",
-    "project": "项目",
+  "session_detail": {
+    "title": "会话详情",
+    "history": "聊天历史",
+    "no_history": "暂无聊天记录",
+    "abort": "⏹ 中止运行",
+    "edit_config": "⚙ 修改配置",
+    "model": "模型",
+    "thinking": "思维链",
+    "send": "发送",
+    "send_placeholder": "输入消息..."
+  },
+  "cron": {
+    "eyebrow": "定时任务管理",
+    "title": "定时任务",
+    "subtitle": "管理和调度 Cron 任务",
+    "new_job": "新建任务",
+    "create_job": "创建定时任务",
+    "name": "名称",
+    "schedule": "调度规则",
     "status": "状态",
-    "priority": "优先级",
-    "owner": "负责人",
-    "no_tasks": "暂无匹配的任务",
-    "all_projects": "所有项目",
-    "all_status": "所有状态",
-    "all_priority": "所有优先级",
-    "form_title": "新建任务",
-    "form_edit_title": "编辑任务",
-    "detail": {
-      "info": "任务信息",
-      "description": "描述",
-      "no_description": "暂无描述",
-      "status_history": "状态历史",
-      "no_history": "暂无状态变更记录",
-      "category": "分类",
-      "phase": "阶段",
-      "risk": "风险等级",
-      "doc_sync_risk": "文档同步风险",
-      "description_placeholder": "输入任务描述、需求详情、注意事项..."
-    }
+    "next_run": "下次执行",
+    "runs": "执行记录",
+    "runs_history": "执行历史",
+    "no_jobs": "暂无定时任务",
+    "no_runs": "暂无执行记录",
+    "enable": "启用",
+    "disable": "禁用",
+    "trigger": "手动触发",
+    "confirm_delete": "确定要删除该定时任务吗？",
+    "form_name": "任务名称",
+    "form_schedule": "调度规则（如 */5 * * * *）",
+    "form_payload": "Payload (JSON)"
+  },
+  "chat": {
+    "title": "Agent 聊天",
+    "placeholder": "输入消息...",
+    "send": "发送",
+    "abort": "中止",
+    "empty": "开始与 Agent 对话"
+  },
+  "gateway": {
+    "eyebrow": "Gateway 配置",
+    "title": "Gateway 设置",
+    "subtitle": "配置 OpenClaw Gateway WebSocket 连接",
+    "config": "连接配置",
+    "url_label": "Gateway URL",
+    "token_label": "Gateway Token",
+    "test_btn": "测试连接",
+    "connect": "连接",
+    "disconnect": "断开连接",
+    "go_settings": "前往设置",
+    "health": "健康状态",
+    "saved": "配置已保存",
+    "test_ok": "连接成功",
+    "state_connected": "已连接",
+    "state_connecting": "连接中...",
+    "state_disconnected": "未连接",
+    "state_error": "连接错误",
+    "status": "连接状态"
   },
   "kanban": {
     "eyebrow": "看板",
@@ -121,21 +146,6 @@
     "zh": "中文",
     "en": "English"
   },
-  "category": {
-    "requirement": "需求",
-    "backend": "后端",
-    "frontend": "前端",
-    "test": "测试",
-    "dba": "数据库",
-    "design": "设计",
-    "devops": "运维",
-    "doc": "文档"
-  },
-  "priority": {
-    "high": "高",
-    "medium": "中",
-    "low": "低"
-  },
   "status": {
     "planned": "计划中",
     "in_progress": "进行中",
@@ -144,18 +154,5 @@
     "done": "已完成",
     "active": "进行中",
     "archived": "已归档"
-  },
-  "project_status": {
-    "active": "进行中",
-    "archived": "已归档"
-  },
-  "task_action": {
-    "label": "操作",
-    "start": "▶ 开始",
-    "review": "🔍 提交审核",
-    "complete": "✅ 标记完成",
-    "reject": "↩️ 驳回",
-    "restart": "🔄 重新开始",
-    "block": "🚫 标记阻塞"
   }
 }

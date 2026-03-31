@@ -9,8 +9,6 @@
     "delete": "Delete",
     "edit": "Edit",
     "actions": "Actions",
-    "confirm_delete_project": "Delete this project and all its tasks?",
-    "confirm_delete_task": "Delete this task?",
     "search": "Search...",
     "no_data": "No data",
     "total": "Total: {{count}}",
@@ -22,16 +20,28 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "sessions": "Sessions",
+    "cron": "Cron",
+    "chat": "Chat",
+    "settings": "Settings",
+    "main": "Main",
+    "collapse": "Collapse",
     "projects": "Projects",
     "tasks": "Tasks",
-    "kanban": "Kanban",
-    "main": "Main",
-    "collapse": "Collapse"
+    "kanban": "Kanban"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime Control Plane",
     "title": "OpenClaw Control Plane",
-    "subtitle": "MVP Live Dashboard — Backend connected to real API",
+    "subtitle": "Gateway Live Dashboard",
+    "active_sessions": "Active Sessions",
+    "total_sessions": "Total Sessions",
+    "model": "Current Model",
+    "recent_sessions": "Recent Sessions",
+    "view_all": "View All",
+    "no_sessions": "No active sessions",
+    "not_connected": "Gateway Not Connected",
+    "connect_hint": "Go to Settings to configure Gateway connection",
     "projects": "Projects",
     "tasks_count": "Tasks",
     "blocked": "Blocked",
@@ -41,61 +51,76 @@
     "no_projects": "No projects yet",
     "no_tasks": "No tasks yet"
   },
-  "projects": {
-    "eyebrow": "Project Management",
-    "title": "Projects",
-    "subtitle": "Manage projects and view task breakdowns",
-    "new_project": "+ New Project",
-    "code": "Code",
-    "name": "Name",
-    "status": "Status",
-    "tasks": "Tasks",
-    "blocked": "Blocked",
-    "owner": "Owner",
-    "no_projects": "No projects yet. Click to create one.",
-    "form_title": "New Project",
-    "form_code": "Code *",
-    "form_name": "Name *",
-    "form_desc": "Description",
-    "form_code_placeholder": "OCP",
-    "form_name_placeholder": "Project name",
-    "form_desc_placeholder": "Optional",
-    "detail": {
-      "info": "Project Info",
-      "description": "Description",
-      "no_description": "No description",
-      "tasks_list": "Tasks",
-      "no_tasks": "No tasks in this project"
-    }
+  "sessions": {
+    "eyebrow": "Session Management",
+    "title": "Sessions",
+    "subtitle": "Manage OpenClaw Agent Sessions",
+    "key": "Session Key",
+    "agent": "Agent",
+    "state": "State",
+    "messages": "Messages",
+    "last_active": "Last Active",
+    "no_sessions": "No sessions"
   },
-  "tasks": {
-    "eyebrow": "Task Management",
-    "title": "Task List",
-    "subtitle": "View and manage all tasks across projects",
-    "new_task": "New Task",
-    "title_col": "Title",
-    "project": "Project",
+  "session_detail": {
+    "title": "Session Detail",
+    "history": "Chat History",
+    "no_history": "No chat history",
+    "abort": "⏹ Abort",
+    "edit_config": "⚙ Edit Config",
+    "model": "Model",
+    "thinking": "Thinking",
+    "send": "Send",
+    "send_placeholder": "Type a message..."
+  },
+  "cron": {
+    "eyebrow": "Cron Management",
+    "title": "Cron Jobs",
+    "subtitle": "Manage and schedule Cron tasks",
+    "new_job": "New Job",
+    "create_job": "Create Cron Job",
+    "name": "Name",
+    "schedule": "Schedule",
     "status": "Status",
-    "priority": "Priority",
-    "owner": "Owner",
-    "no_tasks": "No matching tasks found",
-    "all_projects": "All Projects",
-    "all_status": "All Status",
-    "all_priority": "All Priority",
-    "form_title": "New Task",
-    "form_edit_title": "Edit Task",
-    "detail": {
-      "info": "Task Info",
-      "description": "Description",
-      "no_description": "No description",
-      "status_history": "Status History",
-      "no_history": "No status changes recorded",
-      "category": "Category",
-      "phase": "Phase",
-      "risk": "Risk Level",
-      "doc_sync_risk": "Doc Sync Risk",
-      "description_placeholder": "Enter task description, requirements, notes..."
-    }
+    "next_run": "Next Run",
+    "runs": "Runs",
+    "runs_history": "Run History",
+    "no_jobs": "No cron jobs",
+    "no_runs": "No run history",
+    "enable": "Enable",
+    "disable": "Disable",
+    "trigger": "Trigger",
+    "confirm_delete": "Delete this cron job?",
+    "form_name": "Job Name",
+    "form_schedule": "Schedule (e.g. */5 * * * *)",
+    "form_payload": "Payload (JSON)"
+  },
+  "chat": {
+    "title": "Agent Chat",
+    "placeholder": "Type a message...",
+    "send": "Send",
+    "abort": "Abort",
+    "empty": "Start a conversation with the Agent"
+  },
+  "gateway": {
+    "eyebrow": "Gateway Configuration",
+    "title": "Gateway Settings",
+    "subtitle": "Configure OpenClaw Gateway WebSocket connection",
+    "config": "Connection Config",
+    "url_label": "Gateway URL",
+    "token_label": "Gateway Token",
+    "test_btn": "Test Connection",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "go_settings": "Go to Settings",
+    "health": "Health",
+    "saved": "Configuration saved",
+    "test_ok": "Connection successful",
+    "state_connected": "Connected",
+    "state_connecting": "Connecting...",
+    "state_disconnected": "Disconnected",
+    "state_error": "Connection Error",
+    "status": "Connection Status"
   },
   "kanban": {
     "eyebrow": "Kanban",
@@ -121,21 +146,6 @@
     "zh": "中文",
     "en": "English"
   },
-  "category": {
-    "requirement": "Requirement",
-    "backend": "Backend",
-    "frontend": "Frontend",
-    "test": "Test",
-    "dba": "DBA",
-    "design": "Design",
-    "devops": "DevOps",
-    "doc": "Doc"
-  },
-  "priority": {
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low"
-  },
   "status": {
     "planned": "Planned",
     "in_progress": "In Progress",
@@ -144,18 +154,5 @@
     "done": "Done",
     "active": "Active",
     "archived": "Archived"
-  },
-  "project_status": {
-    "active": "Active",
-    "archived": "Archived"
-  },
-  "task_action": {
-    "label": "Actions",
-    "start": "▶ Start",
-    "review": "🔍 Submit Review",
-    "complete": "✅ Complete",
-    "reject": "↩️ Reject",
-    "restart": "🔄 Restart",
-    "block": "🚫 Block"
   }
 }

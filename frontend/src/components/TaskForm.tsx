@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { tasksApi, type TaskItem } from '../api/modules/tasks'

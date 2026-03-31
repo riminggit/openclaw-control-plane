@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useTheme, THEMES, type ThemeName } from '../components/ThemeProvider'
+import { useConnectionState } from '../hooks/useGateway'
 
 const navItems = [
   { to: '/', labelKey: 'nav.dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1' },
-  { to: '/projects', labelKey: 'nav.projects', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
-  { to: '/tasks', labelKey: 'nav.tasks', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
-  { to: '/kanban', labelKey: 'nav.kanban', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
+  { to: '/sessions', labelKey: 'nav.sessions', icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' },
+  { to: '/cron', labelKey: 'nav.cron', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { to: '/chat', labelKey: 'nav.chat', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' },
+  { to: '/settings', labelKey: 'nav.settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
 ]
 
 export function AppLayout() {
@@ -34,18 +36,23 @@ export function AppLayout() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const connState = useConnectionState()
+
   const breadcrumbMap: Record<string, string> = {
     '/': t('nav.dashboard'),
-    '/projects': t('nav.projects'),
+    '/sessions': t('nav.sessions'),
+    '/cron': t('nav.cron'),
+    '/chat': t('nav.chat'),
+    '/settings': t('nav.settings'),
     '/tasks': t('nav.tasks'),
     '/kanban': t('nav.kanban'),
   }
 
   const pathname = location.pathname
   let breadcrumbItems: { label: string; path?: string }[] = []
-  if (pathname.startsWith('/projects/') && pathname.length > '/projects/'.length) {
+  if (pathname.startsWith('/sessions/') && pathname.length > '/sessions/'.length) {
     breadcrumbItems = [
-      { label: t('nav.projects'), path: '/projects' },
+      { label: t('nav.sessions'), path: '/sessions' },
       { label: 'Detail' },
     ]
   } else if (pathname.startsWith('/tasks/') && pathname.length > '/tasks/'.length) {
@@ -92,6 +99,14 @@ export function AppLayout() {
         </nav>
 
         <div className="sidebar-footer">
+          {/* Gateway Connection Status */}
+          <div className="sidebar-footer-btn" style={{ cursor: 'default', opacity: 0.9 }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%', display: 'inline-block',
+              background: connState === 'connected' ? 'var(--status-green)' : connState === 'error' ? 'var(--status-red)' : connState === 'connecting' ? 'var(--status-yellow)' : 'var(--text-muted)',
+            }} />
+            {!collapsed && <span style={{ fontSize: 'var(--text-xs)' }}>{connState === 'connected' ? t('gateway.state_connected') : connState === 'connecting' ? t('gateway.state_connecting') : t('gateway.state_disconnected')}</span>}
+          </div>
           <button className="sidebar-footer-btn" onClick={() => setCollapsed(v => !v)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }}>
               <path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
