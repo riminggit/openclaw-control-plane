@@ -86,7 +86,7 @@
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-font-smoothing: antialiased; }
-body { font-family: var(--font-sans); font-size: var(--text-base); line-height: 1.5; color: var(--text-primary); background: var(--bg-app); overflow-x: hidden; }
+body { font-family: var(--font-sans); font-size: var(--text-base); line-height: 1.5; color: var(--text-primary); background: var(--bg-app); overflow-x: auto; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 input, select, textarea, button { font-family: inherit; font-size: inherit; }
