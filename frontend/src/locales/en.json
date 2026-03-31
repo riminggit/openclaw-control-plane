@@ -72,7 +72,7 @@
     "eyebrow": "Task Management",
     "title": "Task List",
     "subtitle": "View and manage all tasks across projects",
-    "new_task": "+ New Task",
+    "new_task": "New Task",
     "title_col": "Title",
     "project": "Project",
     "status": "Status",

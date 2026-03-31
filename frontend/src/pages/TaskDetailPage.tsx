@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { tasksApi } from '../api/modules/tasks'
 import { useTranslation } from 'react-i18next'
 
 export function TaskDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [task, setTask] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -54,6 +55,11 @@ export function TaskDetailPage() {
 
   if (!task) return null
 
+  const handleDelete = async () => {
+    if (!confirm(t('app.confirm_delete_task'))) return
+    try { await tasksApi.delete(task.id); navigate('/tasks') } catch (e: any) { setError(e.message) }
+  }
+
   return (
     <div>
       <div className="breadcrumb" style={{ marginBottom: 'var(--space-4)' }}>
@@ -68,6 +74,7 @@ export function TaskDetailPage() {
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
             <span className={`badge badge-${task.status}`}>{task.status.replace('_', ' ')}</span>
             <span className={`badge badge-priority-${task.priority}`}>{task.priority}</span>
+            <button className="btn btn-danger" style={{ marginLeft: 'auto' }} onClick={handleDelete}>🗑 {t('app.delete')}</button>
           </div>
         </div>
       </div>
