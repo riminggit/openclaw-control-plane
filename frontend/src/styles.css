@@ -338,6 +338,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .project-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
+  .topbar-hamburger { display: flex; }
   .sidebar { transform: translateX(-100%); }
   .main-wrapper { margin-left: 0 !important; }
   .topbar-hamburger { display: flex; }
@@ -352,4 +353,3 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   transform: translateX(0) !important;
   z-index: 100 !important;
 }
-.topbar-hamburger { display: none; }
