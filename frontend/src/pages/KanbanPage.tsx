@@ -58,6 +58,7 @@ export function KanbanPage() {
               <div
                 key={col.key}
                 className="kanban-column"
+                style={{
                   borderColor: dragOver === col.key ? col.color : undefined,
                 }}
                 onDragOver={e => { e.preventDefault(); setDragOver(col.key) }}
