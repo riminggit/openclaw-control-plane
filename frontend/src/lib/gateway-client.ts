@@ -97,6 +97,7 @@ export class GatewayClient {
     if (msg.type === 'event' && msg.event === 'gateway.connected') {
       this.setState('connected')
       this.reconnectDelay = 1000
+      this.reconnectCount = 0
       return
     }
     // P1-V2-3: Ignore system events (health/tick) — they don't need client processing
@@ -163,6 +164,12 @@ export class GatewayClient {
 
   private _scheduleReconnect() {
     if (!this.shouldReconnect || this.reconnectTimer) return
+    // P1-V2-4: Stop reconnecting after max attempts
+    if (++this.reconnectCount > this.maxReconnects) {
+      this.setState('error')
+      this.shouldReconnect = false
+      return
+    }
     if (this.reconnectDelay > 30000) this.reconnectDelay = 30000
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
