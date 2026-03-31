@@ -11,6 +11,8 @@ import { TasksPage } from './pages/TasksPage'
 import { TaskDetailPage } from './pages/TaskDetailPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { ProjectDetailPage } from './pages/ProjectDetailPage'
+import { AnalyticsPage } from './pages/AnalyticsPage'
+import { AgentLifecyclePage } from './pages/AgentLifecyclePage'
 import { ThemeProvider } from './components/ThemeProvider'
 import { GatewayProvider } from './hooks/useGateway'
 
@@ -32,6 +34,8 @@ export default function App() {
               <Route path="tasks/:id" element={<TaskDetailPage />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="projects/:id" element={<ProjectDetailPage />} />
+              <Route path="analytics/cost" element={<AnalyticsPage />} />
+              <Route path="agents/lifecycle" element={<AgentLifecyclePage />} />
             </Route>
           </Routes>
         </GatewayProvider>
