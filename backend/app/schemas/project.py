@@ -16,3 +16,5 @@ class ProjectItem(BaseModel):
 class ProjectListResponse(BaseModel):
     items: list[ProjectItem]
     total: int
+    page: int = 1
+    page_size: int = 50

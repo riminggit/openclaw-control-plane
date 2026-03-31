@@ -58,8 +58,8 @@ export function TaskDetailPage() {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', flexWrap: 'wrap', flex: 1 }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{task.title}</h1>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className={`badge badge-${task.status}`}>{t(`status.${task.status}`, task.status)}</span>
-            <span className={`badge badge-${task.priority}`}>{t(`priority.${task.priority}`, task.priority)}</span>
+            <span className={`badge badge-${task.status}`}>{String(t(`status.${task.status}`, task.status))}</span>
+            <span className={`badge badge-${task.priority}`}>{String(t(`priority.${task.priority}`, task.priority))}</span>
           </div>
         </div>
       </div>
@@ -125,11 +125,11 @@ export function TaskDetailPage() {
             </div>
             <div className="detail-meta-item">
               <div className="label">{t('tasks.status')}</div>
-              <div className="value"><span className={`badge badge-${task.status}`}>{t(`status.${task.status}`, task.status)}</span></div>
+              <div className="value"><span className={`badge badge-${task.status}`}>{String(t(`status.${task.status}`, task.status))}</span></div>
             </div>
             <div className="detail-meta-item">
               <div className="label">{t('tasks.priority')}</div>
-              <div className="value"><span className={`badge badge-${task.priority}`}>{t(`priority.${task.priority}`, task.priority)}</span></div>
+              <div className="value"><span className={`badge badge-${task.priority}`}>{String(t(`priority.${task.priority}`, task.priority))}</span></div>
             </div>
             <div className="detail-meta-item">
               <div className="label">{t('tasks.detail.risk')}</div>

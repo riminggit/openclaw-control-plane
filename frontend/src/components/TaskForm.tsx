@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { tasksApi, type TaskItem } from '../api/modules/tasks'
 import { projectsApi } from '../api/modules/projects'
@@ -38,10 +38,10 @@ export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
       const payload: Record<string, string> = { title, category, priority, status, phase, owner_role: ownerRole }
       if (description.trim()) payload.description = description.trim()
       if (isEdit) {
-        await tasksApi.update(task!.id, payload)
+        await tasksApi.update(task!.id, payload as any)
       } else {
-        payload.project_id = projectIdVal
-        await tasksApi.create(payload)
+        (payload as any).project_id = projectIdVal
+        await tasksApi.create(payload as any)
       }
       onSaved()
       onClose()

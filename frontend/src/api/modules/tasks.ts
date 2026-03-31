@@ -3,6 +3,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../client'
 export interface TaskItem {
   id: string
   title: string
+  description?: string
   projectId: string
   category: string
   phase: string

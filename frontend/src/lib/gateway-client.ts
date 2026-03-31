@@ -27,30 +27,22 @@ export class GatewayClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectDelay = 1000
   private shouldReconnect = false
-  private _stateListeners: Set<(state: ConnectionState) => void = new Set()
-
-  onStateChange(cb: (state: ConnectionState) => void) {
-    this._stateListeners.add(cb)
-    // Also notify immediately with current state
-    cb(this._state)
-  }
-
-  private setState(s: ConnectionState) {
-    this._state = s
-    for (const cb of this._stateListeners) {
-      cb(s)
-    }
-  }
+  private _stateListeners: Set<(state: ConnectionState) => void> = new Set()
 
   get state() { return this._state }
 
   onStateChange(cb: (state: ConnectionState) => void) {
-    this._onStateChange = cb
+    this._stateListeners.add(cb)
+    cb(this._state)
+    return () => { this._stateListeners.delete(cb) }
   }
 
   private setState(s: ConnectionState) {
+    if (this._state === s) return
     this._state = s
-    this._onStateChange?.(s)
+    for (const cb of this._stateListeners) {
+      cb(s)
+    }
   }
 
   /** Connect to the backend WebSocket proxy (no token needed client-side). */
@@ -73,8 +65,7 @@ export class GatewayClient {
     }
 
     this.ws.onopen = () => {
-      // The backend proxy sends the connect frame with token automatically.
-      // We just wait for the connect response from Gateway.
+      // Backend proxy sends the connect frame with token automatically.
     }
 
     this.ws.onmessage = (ev) => {
@@ -101,14 +92,12 @@ export class GatewayClient {
 
   private _handleMessage(msg: any) {
     if (msg.type === 'event' && msg.event === 'gateway.connected') {
-      // Backend successfully authenticated with Gateway
       this.setState('connected')
       this.reconnectDelay = 1000
       return
     }
     if (msg.type === 'res') {
       if (msg.id === 0 || msg.id === 'connect-1' || String(msg.id).startsWith('connect-')) {
-        // connect response (brokered by backend proxy)
         if (msg.ok) {
           this.setState('connected')
           this.reconnectDelay = 1000
