@@ -96,7 +96,7 @@ export function AppLayout() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }}>
               <path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
             </svg>
-            {!collapsed && <span>{t('nav.collapse')}/span>}
+            {!collapsed && <span>{t('nav.collapse')}</span>}
           </button>
 
           {/* Theme */}
