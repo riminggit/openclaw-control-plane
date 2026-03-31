@@ -51,18 +51,14 @@ export function KanbanPage() {
           ))}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 'var(--space-4)', overflowX: 'auto', paddingBottom: 'var(--space-4)' }}>
+        <div className="kanban-board">
           {COLUMNS.map(col => {
             const colTasks = tasks.filter(task => task.status === col.key)
             return (
               <div
                 key={col.key}
                 className="kanban-column"
-                style={{
-                  minWidth: 240,
-                  flex: 1,
                   borderColor: dragOver === col.key ? col.color : undefined,
-                  background: dragOver === col.key ? 'var(--accent-muted)' : undefined,
                 }}
                 onDragOver={e => { e.preventDefault(); setDragOver(col.key) }}
                 onDragLeave={() => setDragOver(null)}
