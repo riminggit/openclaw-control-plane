@@ -147,7 +147,6 @@ def update_task(task_id: str, body: dict = Body(default={}), db: Session = Depen
     if 'owner_role' in body or 'ownerRole' in body: t.owner_role = body.get('owner_role', body.get('ownerRole', ''))
     if 'category' in body: t.category = body['category']
     if 'phase' in body: t.phase = body['phase']
-    if phase is not None: t.phase = phase
     t.updated_at = time.strftime("%Y-%m-%dT%H:%M:%S")
     db.commit()
     db.refresh(t)
