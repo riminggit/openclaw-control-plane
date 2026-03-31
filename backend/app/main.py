@@ -11,6 +11,9 @@ from app.api.analytics import router as analytics_router
 from app.api.lifecycle import router as lifecycle_router
 from app.api.chat import router as chat_router
 from app.api.kanban import router as kanban_router
+from app.api.agents_mgmt import router as agents_mgmt_router
+from app.api.channels import router as channels_router
+from app.api.logs import router as logs_router
 
 
 @asynccontextmanager
@@ -36,6 +39,9 @@ app.include_router(analytics_router)
 app.include_router(lifecycle_router)
 app.include_router(chat_router)
 app.include_router(kanban_router)
+app.include_router(agents_mgmt_router)
+app.include_router(channels_router)
+app.include_router(logs_router)
 app.add_middleware(ApiKeyMiddleware)
 
 
