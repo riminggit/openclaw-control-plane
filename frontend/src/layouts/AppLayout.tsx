@@ -84,7 +84,7 @@ export function AppLayout() {
         </div>
         <nav className="sidebar-nav">
           {navItems.map(item => (
-            <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setMobileOpen(false)}>
+            <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={() => setMobileOpen(false)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                 <path d={item.icon} />
               </svg>

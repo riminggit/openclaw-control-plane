@@ -165,6 +165,73 @@ class ProjectMetricDaily(Base):
     created_at: Mapped[str] = mapped_column(String, nullable=False)
 
 
+# ── Phase 4: Cost Analytics ──
+
+from sqlalchemy import Float  # noqa: E402
+
+class AgentTokenSnapshot(Base):
+    __tablename__ = "agent_token_snapshots"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    agent_id: Mapped[str] = mapped_column(String, nullable=False)
+    session_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    total_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    estimated_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    model: Mapped[str | None] = mapped_column(String, nullable=True)
+    sampled_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class DailyCostSummary(Base):
+    __tablename__ = "daily_cost_summary"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    date: Mapped[str] = mapped_column(String, nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    total_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_sessions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    estimated_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+
+
+class BudgetAlert(Base):
+    __tablename__ = "budget_alerts"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    budget_type: Mapped[str] = mapped_column(String, nullable=False, default="daily")
+    budget_limit_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    current_usage_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    alert_threshold_pct: Mapped[float] = mapped_column(Float, nullable=False, default=80.0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[str] = mapped_column(String, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+# ── Phase 4: Lifecycle ──
+
+class CleanupLog(Base):
+    __tablename__ = "cleanup_logs"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    session_key: Mapped[str] = mapped_column(String, nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    agent_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    lifecycle_state: Mapped[str] = mapped_column(String, nullable=False)
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cleaned_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+# ── Phase 4: Chat bookmarks ──
+
+class ChatBookmark(Base):
+    __tablename__ = "chat_bookmarks"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    session_key: Mapped[str] = mapped_column(String, nullable=False)
+    message_id: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    bookmarked_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
 # ── Init ──
 
 def init_db():

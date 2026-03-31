@@ -153,6 +153,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .sidebar-footer-btn:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
 .sidebar-footer-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.conn-indicator { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
 
 /* ===== Main Content ===== */
 .main-wrapper { flex: 1; margin-left: var(--sidebar-width); display: flex; flex-direction: column; min-height: 100vh; min-width: 0; overflow: visible; transition: margin-left var(--transition-slow); }
@@ -297,11 +298,20 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .form-error { color: var(--status-red); font-size: var(--text-sm); padding: var(--space-2) var(--space-3); background: var(--status-red-bg); border-radius: var(--radius-md); }
 
 /* ===== Dropdown ===== */
+.dropdown { position: relative; }
 .dropdown-menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--bg-dropdown); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-1); min-width: 140px; z-index: 200; box-shadow: var(--shadow-lg); animation: dropIn var(--transition-fast); }
 @keyframes dropIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 .dropdown-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-2) var(--space-3); border: none; background: none; color: var(--text-secondary); font-size: var(--text-sm); cursor: pointer; border-radius: var(--radius-md); text-align: left; transition: all var(--transition-fast); }
 .dropdown-item:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
 .dropdown-item.active { color: var(--accent); font-weight: 500; }
+.dropdown-trigger {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
+  background: none; border: none; color: var(--text-secondary);
+  font-size: var(--text-sm); cursor: pointer;
+  transition: all var(--transition-fast); white-space: nowrap; overflow: hidden; width: 100%; text-align: left;
+}
+.dropdown-trigger:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
 .theme-swatch { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--border-default); }
 
 /* ===== Empty State ===== */

@@ -7,6 +7,9 @@ from app.core.auth import ApiKeyMiddleware
 from app.db import init_db, seed_db
 from app.api.routes import router
 from app.api.ws_proxy import router as ws_router
+from app.api.analytics import router as analytics_router
+from app.api.lifecycle import router as lifecycle_router
+from app.api.chat import router as chat_router
 
 
 @asynccontextmanager
@@ -28,6 +31,9 @@ app.add_middleware(
 )
 app.include_router(router)
 app.include_router(ws_router)
+app.include_router(analytics_router)
+app.include_router(lifecycle_router)
+app.include_router(chat_router)
 app.add_middleware(ApiKeyMiddleware)
 
 
