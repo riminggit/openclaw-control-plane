@@ -20,6 +20,7 @@ export function GatewayProvider({ children }: { children: React.ReactNode }) {
 // Sessions
 export function useSessions(limit = 50) {
   const client = useGateway()
+  const connState = useConnectionState()
   const [sessions, setSessions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const fetched = useRef(false)
@@ -31,7 +32,7 @@ export function useSessions(limit = 50) {
     } catch { /* */ } finally { setLoading(false) }
   }, [client, limit])
 
-  useEffect(() => { if (client.state === 'connected' && !fetched.current) { fetched.current = true; fetch() } }, [client.state, fetch])
+  useEffect(() => { if (connState === 'connected' && !fetched.current) { fetched.current = true; fetch() } }, [connState, fetch])
   useEffect(() => {
     const off = client.on('session', () => { fetched.current = false; fetch() })
     return off
@@ -43,6 +44,7 @@ export function useSessions(limit = 50) {
 // Cron Jobs
 export function useCronJobs() {
   const client = useGateway()
+  const connState = useConnectionState()
   const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const fetched = useRef(false)
@@ -54,7 +56,7 @@ export function useCronJobs() {
     } catch { /* */ } finally { setLoading(false) }
   }, [client])
 
-  useEffect(() => { if (client.state === 'connected' && !fetched.current) { fetched.current = true; fetch() } }, [client.state, fetch])
+  useEffect(() => { if (connState === 'connected' && !fetched.current) { fetched.current = true; fetch() } }, [connState, fetch])
   useEffect(() => {
     const off = client.on('cron', () => { fetched.current = false; fetch() })
     return off
@@ -66,6 +68,7 @@ export function useCronJobs() {
 // Status / Health
 export function useGatewayStatus() {
   const client = useGateway()
+  const connState = useConnectionState()
   const [status, setStatus] = useState<any>(null)
   const [health, setHealth] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -81,7 +84,7 @@ export function useGatewayStatus() {
     } catch { /* */ } finally { setLoading(false) }
   }, [client])
 
-  useEffect(() => { if (client.state === 'connected') fetch() }, [client.state, fetch])
+  useEffect(() => { if (connState === 'connected') fetch() }, [connState, fetch])
 
   return { status, health, loading, refetch: fetch }
 }
@@ -100,7 +103,7 @@ export function useChatHistory(limit = 50) {
     } catch { /* */ } finally { setLoading(false) }
   }, [client, limit])
 
-  useEffect(() => { if (client.state === 'connected' && !fetched.current) { fetched.current = true; fetch() } }, [client.state, fetch])
+  useEffect(() => { if (connState === 'connected' && !fetched.current) { fetched.current = true; fetch() } }, [connState, fetch])
   useEffect(() => {
     const off = client.on('chat', (payload) => {
       setMessages(prev => [...prev, payload])
@@ -118,7 +121,7 @@ export function useLogs(filter?: string) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (client.state !== 'connected') return
+    if (connState !== 'connected') return
     setLoading(true)
     client.call('logs.tail', filter ? { filter } : {}).then((res) => {
       setLogs(res?.lines || res || [])
@@ -139,10 +142,12 @@ export function useLogs(filter?: string) {
 
 // Connection state hook
 export function useConnectionState() {
-  const [state, setState] = useState(gatewayClient.state)
+  const client = useGateway()
+  const [state, setState] = useState(client.state)
   useEffect(() => {
-    gatewayClient.onStateChange(setState)
-    return () => { gatewayClient.onStateChange(() => {}) }
-  }, [])
+    const cb = (s: string) => setState(s)
+    client.onStateChange(cb)
+    return () => { client.onStateChange(() => {}) }
+  }, [client])
   return state
 }
