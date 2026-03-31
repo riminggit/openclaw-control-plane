@@ -93,7 +93,8 @@
       "category": "Category",
       "phase": "Phase",
       "risk": "Risk Level",
-      "doc_sync_risk": "Doc Sync Risk"
+      "doc_sync_risk": "Doc Sync Risk",
+      "description_placeholder": "Enter task description, requirements, notes..."
     }
   },
   "kanban": {
@@ -147,5 +148,14 @@
   "project_status": {
     "active": "Active",
     "archived": "Archived"
+  },
+  "task_action": {
+    "label": "Actions",
+    "start": "▶ Start",
+    "review": "🔍 Submit Review",
+    "complete": "✅ Complete",
+    "reject": "↩️ Reject",
+    "restart": "🔄 Restart",
+    "block": "🚫 Block"
   }
 }

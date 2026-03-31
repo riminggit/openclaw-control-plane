@@ -13,6 +13,7 @@ interface TaskFormProps {
 export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
   const { t } = useTranslation()
   const [title, setTitle] = useState(task?.title || '')
+  const [description, setDescription] = useState(task?.description || '')
   const [category, setCategory] = useState(task?.category || 'backend')
   const [priority, setPriority] = useState(task?.priority || 'medium')
   const [status, setStatus] = useState(task?.status || 'planned')
@@ -34,10 +35,13 @@ export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
     setLoading(true)
     setError(null)
     try {
+      const payload: Record<string, string> = { title, category, priority, status, phase, owner_role: ownerRole }
+      if (description.trim()) payload.description = description.trim()
       if (isEdit) {
-        await tasksApi.update(task.id, { title, category, priority, status, phase, owner_role: ownerRole })
+        await tasksApi.update(task!.id, payload)
       } else {
-        await tasksApi.create({ project_id: projectIdVal, title, category, priority, status, phase, owner_role: ownerRole })
+        payload.project_id = projectIdVal
+        await tasksApi.create(payload)
       }
       onSaved()
       onClose()
@@ -69,6 +73,10 @@ export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
           <div className="form-group">
             <label>{t('tasks.title_col')} *</label>
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('tasks.title_col')} required />
+          </div>
+          <div className="form-group">
+            <label>{t('tasks.detail.description')}</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('tasks.detail.description_placeholder')} rows={3} style={{ resize: 'vertical', fontFamily: 'var(--font-sans)' }} />
           </div>
           <div className="form-row">
             <div className="form-group">

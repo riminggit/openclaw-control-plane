@@ -4,15 +4,19 @@ from pydantic import BaseModel
 class TaskItem(BaseModel):
     id: str
     title: str
+    description: str | None = None
     projectId: str
-    category: str
-    phase: str
+    projectCode: str | None = None
+    projectName: str | None = None
+    category: str | None = None
+    phase: str | None = None
     priority: str
     status: str
-    ownerRole: str
+    ownerRole: str | None = None
     ownerAgentId: str | None = None
-    riskLevel: str = "medium"
+    riskLevel: str = "low"
     docSyncRisk: str = "low"
+    createdAt: str | None = None
     updatedAt: str
 
 

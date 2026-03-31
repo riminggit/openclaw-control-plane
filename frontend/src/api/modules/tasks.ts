@@ -31,4 +31,6 @@ export const tasksApi = {
   update: (id: string, data: Record<string, string>) =>
     apiPut<TaskItem>(`/tasks/${id}`, data),
   delete: (id: string) => apiDelete(`/tasks/${id}`),
+  action: (id: string, action: string) =>
+    apiPost<TaskItem>(`/tasks/${id}/action`, { action }),
 }

@@ -93,7 +93,8 @@
       "category": "分类",
       "phase": "阶段",
       "risk": "风险等级",
-      "doc_sync_risk": "文档同步风险"
+      "doc_sync_risk": "文档同步风险",
+      "description_placeholder": "输入任务描述、需求详情、注意事项..."
     }
   },
   "kanban": {
@@ -147,5 +148,14 @@
   "project_status": {
     "active": "进行中",
     "archived": "已归档"
+  },
+  "task_action": {
+    "label": "操作",
+    "start": "▶ 开始",
+    "review": "🔍 提交审核",
+    "complete": "✅ 标记完成",
+    "reject": "↩️ 驳回",
+    "restart": "🔄 重新开始",
+    "block": "🚫 标记阻塞"
   }
 }
