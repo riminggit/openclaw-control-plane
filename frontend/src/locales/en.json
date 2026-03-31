@@ -18,7 +18,9 @@
     "back": "← Back to list",
     "error": "Error",
     "on": "On",
-    "off": "Off"
+    "off": "Off",
+    "confirm_delete_project": "Delete this project? Associated tasks will also be deleted.",
+    "confirm_delete_task": "Delete this task?"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -126,6 +128,67 @@
     "status": "Connection Status",
     "proxy_note": "Gateway connection is proxied by the backend. No manual configuration needed."
   },
+  "projects": {
+    "eyebrow": "Project Management",
+    "title": "Projects",
+    "subtitle": "Manage projects and tasks",
+    "new_project": "New Project",
+    "form_title": "New Project",
+    "form_code": "Project Code",
+    "form_code_placeholder": "e.g. PROJ-001",
+    "form_name": "Project Name",
+    "form_name_placeholder": "Enter project name",
+    "form_desc": "Description",
+    "form_desc_placeholder": "Brief description",
+    "no_projects": "No projects yet",
+    "tasks": "tasks",
+    "blocked": "blocked",
+    "detail": {
+      "info": "Project Info",
+      "tasks_list": "Tasks",
+      "no_tasks": "No tasks yet"
+    },
+    "owner": "Owner"
+  },
+  "tasks": {
+    "eyebrow": "Task Management",
+    "title": "Tasks",
+    "subtitle": "Manage and track all tasks",
+    "new_task": "New Task",
+    "form_title": "New Task",
+    "form_edit_title": "Edit Task",
+    "title_col": "Title",
+    "project": "Project",
+    "status": "Status",
+    "priority": "Priority",
+    "owner": "Owner",
+    "no_tasks": "No tasks yet",
+    "all_status": "All Status",
+    "all_priority": "All Priority",
+    "all_projects": "All Projects",
+    "detail": {
+      "info": "Task Info",
+      "description": "Description",
+      "description_placeholder": "Detailed description...",
+      "category": "Category",
+      "phase": "Phase",
+      "phase_placeholder": "e.g. P1, Sprint 3",
+      "risk": "Risk Level",
+      "no_description": "No description",
+      "status_history": "Status History",
+      "no_history": "No status changes yet"
+    },
+    "owner_placeholder": "e.g. rd-backend-dev"
+  },
+  "task_action": {
+    "label": "Actions",
+    "start": "Start",
+    "review": "Submit for Review",
+    "complete": "Complete",
+    "reject": "Reject",
+    "restart": "Restart",
+    "block": "Block"
+  },
   "kanban": {
     "eyebrow": "Kanban",
     "title": "Kanban Board",
@@ -159,7 +222,19 @@
     "active": "Active",
     "archived": "Archived"
   },
-  "tasks": {
-    "owner_placeholder": "e.g. rd-backend-dev"
+  "category": {
+    "requirement": "Requirement",
+    "backend": "Backend",
+    "frontend": "Frontend",
+    "test": "Test",
+    "dba": "Database",
+    "design": "Design",
+    "devops": "DevOps",
+    "doc": "Documentation"
+  },
+  "priority": {
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
   }
 }

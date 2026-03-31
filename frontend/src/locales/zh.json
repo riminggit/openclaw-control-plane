@@ -18,7 +18,9 @@
     "back": "← 返回列表",
     "error": "错误",
     "on": "开",
-    "off": "关"
+    "off": "关",
+    "confirm_delete_project": "确定要删除该项目吗？关联的任务也将被删除。",
+    "confirm_delete_task": "确定要删除该任务吗？"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -126,6 +128,67 @@
     "status": "连接状态",
     "proxy_note": "Gateway 连接由后端代理，无需手动配置。"
   },
+  "projects": {
+    "eyebrow": "项目管理",
+    "title": "项目列表",
+    "subtitle": "管理项目与任务",
+    "new_project": "新建项目",
+    "form_title": "新建项目",
+    "form_code": "项目代码",
+    "form_code_placeholder": "如 PROJ-001",
+    "form_name": "项目名称",
+    "form_name_placeholder": "输入项目名称",
+    "form_desc": "项目描述",
+    "form_desc_placeholder": "简要描述",
+    "no_projects": "暂无项目",
+    "tasks": "个任务",
+    "blocked": "阻塞",
+    "detail": {
+      "info": "项目信息",
+      "tasks_list": "任务列表",
+      "no_tasks": "暂无任务"
+    },
+    "owner": "负责人"
+  },
+  "tasks": {
+    "eyebrow": "任务管理",
+    "title": "任务列表",
+    "subtitle": "管理和跟踪所有任务",
+    "new_task": "新建任务",
+    "form_title": "新建任务",
+    "form_edit_title": "编辑任务",
+    "title_col": "任务标题",
+    "project": "所属项目",
+    "status": "状态",
+    "priority": "优先级",
+    "owner": "负责人",
+    "no_tasks": "暂无任务",
+    "all_status": "全部状态",
+    "all_priority": "全部优先级",
+    "all_projects": "全部项目",
+    "detail": {
+      "info": "任务信息",
+      "description": "描述",
+      "description_placeholder": "详细描述...",
+      "category": "分类",
+      "phase": "阶段",
+      "phase_placeholder": "如 P1、Sprint 3",
+      "risk": "风险等级",
+      "no_description": "暂无描述",
+      "status_history": "状态变更记录",
+      "no_history": "暂无变更记录"
+    },
+    "owner_placeholder": "例如 rd-backend-dev"
+  },
+  "task_action": {
+    "label": "操作",
+    "start": "开始",
+    "review": "提交审核",
+    "complete": "完成",
+    "reject": "驳回",
+    "restart": "重新开始",
+    "block": "阻塞"
+  },
   "kanban": {
     "eyebrow": "看板",
     "title": "看板视图",
@@ -159,7 +222,19 @@
     "active": "进行中",
     "archived": "已归档"
   },
-  "tasks": {
-    "owner_placeholder": "例如 rd-backend-dev"
+  "category": {
+    "requirement": "需求",
+    "backend": "后端",
+    "frontend": "前端",
+    "test": "测试",
+    "dba": "数据库",
+    "design": "设计",
+    "devops": "运维",
+    "doc": "文档"
+  },
+  "priority": {
+    "high": "高",
+    "medium": "中",
+    "low": "低"
   }
 }
