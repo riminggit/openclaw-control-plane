@@ -66,7 +66,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${mobileOpen ? ' mobile-open' : ''}`}>
       {/* Sidebar */}
       <aside className="sidebar" style={{ width: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)' }}>
         <div className="sidebar-header">

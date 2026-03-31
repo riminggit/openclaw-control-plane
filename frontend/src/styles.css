@@ -346,3 +346,10 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .page-content { padding: var(--space-4); }
   .form-row { flex-direction: column; }
 }
+
+/* Mobile sidebar */
+.mobile-open .sidebar {
+  transform: translateX(0) !important;
+  z-index: 100 !important;
+}
+.topbar-hamburger { display: none; }
