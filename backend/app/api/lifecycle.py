@@ -30,6 +30,19 @@ _auto_cleanup_config = {
 _sessions_store: list[dict] = []
 
 
+# ── Sync endpoint (frontend pushes Gateway session data here) ──
+
+class SyncSessionsRequest(BaseModel):
+    sessions: list[dict] = Field(default_factory=list)
+
+@router.post("/sync")
+def sync_sessions(body: SyncSessionsRequest):
+    """Accept Gateway session data from the frontend."""
+    global _sessions_store
+    _sessions_store = body.sessions or []
+    return {"ok": True, "count": len(_sessions_store)}
+
+
 def _classify_session(updated_at_str: str | None, status: str | None) -> str:
     """Classify a session's lifecycle state based on last activity."""
     now = datetime.now(timezone.utc)
@@ -75,18 +88,25 @@ def list_lifecycle(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     for s in _sessions_store:
         state = _classify_session(s.get("updatedAt"), s.get("status"))
+        ua = s.get("updatedAt", "")
+        try:
+            mins_ago = round((now - datetime.fromisoformat(ua.replace("Z", "+00:00"))).total_seconds() / 60, 1) if ua else 0
+        except Exception:
+            mins_ago = 0
         results.append({
             "session_key": s.get("key", s.get("sessionKey", "")),
             "agent_id": s.get("agentId", s.get("label", "")),
             "agent_label": s.get("label", ""),
-            "state": state,
+            "status": state,
+            "channel": s.get("channel", ""),
+            "model": s.get("model", ""),
             "total_tokens": s.get("totalTokens", 0),
-            "updated_at": s.get("updatedAt", ""),
-            "minutes_ago": round((now - datetime.fromisoformat(s["updatedAt"].replace("Z", "+00:00")) if s.get("updatedAt") else now).total_seconds() / 60, 1) if s.get("updatedAt") else 0,
+            "last_active_at": ua,
+            "created_at": s.get("createdAt", s.get("startedAt", "")),
         })
     # Sort by state priority
     state_order = {"ZOMBIE": 0, "FAILED": 1, "STALE": 2, "COMPLETED": 3, "IDLE": 4, "ACTIVE": 5}
-    results.sort(key=lambda x: state_order.get(x["state"], 99))
+    results.sort(key=lambda x: state_order.get(x["status"], 99))
     return results
 
 
@@ -183,8 +203,25 @@ def set_auto_cleanup(body: AutoCleanupConfig):
 # ── Cleanup history ──
 
 @router.get("/history")
+@router.get("/cleanup-logs")
 def cleanup_history(limit: int = Query(50, ge=1, le=200), db: Session = Depends(get_db)):
     rows = db.query(CleanupLog).order_by(CleanupLog.cleaned_at.desc()).limit(limit).all()
     return [{"id": r.id, "session_key": r.session_key, "agent_id": r.agent_id, "agent_label": r.agent_label,
              "lifecycle_state": r.lifecycle_state, "action": r.action, "detail": r.detail, "cleaned_at": r.cleaned_at}
             for r in rows]
+
+
+# ── Aliases for frontend compatibility ──
+
+@router.get("/config")
+def get_config_alias():
+    return _auto_cleanup_config
+
+@router.post("/config")
+def set_config_alias(body: AutoCleanupConfig):
+    _auto_cleanup_config["enabled"] = body.enabled
+    if body.rules:
+        _auto_cleanup_config["rules"].update(body.rules)
+    if body.interval_minutes:
+        _auto_cleanup_config["interval_minutes"] = body.interval_minutes
+    return _auto_cleanup_config

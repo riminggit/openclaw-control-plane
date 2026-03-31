@@ -124,7 +124,7 @@ export function KanbanPage() {
   const [blockReason, setBlockReason] = useState('')
   const dragRef = useRef<KanbanCard | null>(null)
 
-  // ── Fetch all data ──
+  // Fetch all data
   const fetchData = useCallback(async () => {
     setLoading(true)
     const allCards: KanbanCard[] = []
@@ -136,30 +136,32 @@ export function KanbanPage() {
     } catch { /* ignore */ }
 
     // Fetch Gateway sessions
+    let sessions: any[] = []
     if (connState === 'connected') {
       try {
-        const sessions = await gatewayClient.call('sessions.list')
-        const list = sessions?.items || sessions || []
-        list.forEach((s: any) => allCards.push(sessionToCard(s)))
+        const sessionsRes = await gatewayClient.call('sessions.list')
+        sessions = sessionsRes?.items || sessionsRes || []
+        sessions.forEach((s: any) => allCards.push(sessionToCard(s)))
 
-        // Sync to backend
+        // Sync to backend (kanban + lifecycle)
         fetch('/api/kanban/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessions: list, crons: [] }),
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions, crons: [] }),
+        }).catch(() => {})
+        fetch('/api/agents/lifecycle/sync', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions }),
         }).catch(() => {})
       } catch { /* ignore */ }
 
       try {
         const crons = await gatewayClient.call('cron.list')
-        const list = crons?.items || crons || []
-        list.forEach((c: any) => allCards.push(cronToCard(c)))
+        const cronList = crons?.items || crons || []
+        cronList.forEach((c: any) => allCards.push(cronToCard(c)))
 
-        // Sync crons to backend
         fetch('/api/kanban/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessions: [], crons: list }),
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions: [], crons: cronList }),
         }).catch(() => {})
       } catch { /* ignore */ }
     } else {
