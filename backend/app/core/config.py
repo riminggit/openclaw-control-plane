@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8080
     database_url: str = "sqlite:///./control_plane.db"
-    cors_origins: str = "*"
+    cors_origins: str = ""  # P0-2: default deny all, must be explicitly configured
     api_key: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

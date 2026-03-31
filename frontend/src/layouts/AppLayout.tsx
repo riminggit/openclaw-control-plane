@@ -98,7 +98,7 @@ export function AppLayout() {
             </button>
             {themeOpen && (
               <div className="dropdown-menu">
-                {Object.entries(THEMES).map(([key, t_theme]) => (
+                {THEMES.map((th) => (
                   <button key={key} className={`dropdown-item ${theme === key ? 'active' : ''}`} onClick={() => switchTheme(key)}>
                     <span className="color-dot" style={{ background: t_theme.color }} />
                     {!collapsed && <span>{t_theme.label}</span>}

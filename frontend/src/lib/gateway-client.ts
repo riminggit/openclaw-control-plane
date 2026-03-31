@@ -27,7 +27,20 @@ export class GatewayClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectDelay = 1000
   private shouldReconnect = false
-  private _onStateChange?: (state: ConnectionState) => void
+  private _stateListeners: Set<(state: ConnectionState) => void = new Set()
+
+  onStateChange(cb: (state: ConnectionState) => void) {
+    this._stateListeners.add(cb)
+    // Also notify immediately with current state
+    cb(this._state)
+  }
+
+  private setState(s: ConnectionState) {
+    this._state = s
+    for (const cb of this._stateListeners) {
+      cb(s)
+    }
+  }
 
   get state() { return this._state }
 

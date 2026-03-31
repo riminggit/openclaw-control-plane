@@ -21,5 +21,7 @@ class TaskItem(BaseModel):
 
 
 class TaskListResponse(BaseModel):
-    items: list[TaskItem]
-    total: int
+    items: list[TaskItem] = []
+    total: int = 0
+    page: int = 1
+    page_size: int = 50

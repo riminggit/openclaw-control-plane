@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { tasksApi, type TaskItem } from '../api/modules/tasks'
@@ -26,9 +25,9 @@ export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
   const [error, setError] = useState<string | null>(null)
   const isEdit = !!task
 
-  useState(() => {
+  useEffect(() => {
     projectsApi.list().then(r => setProjects(r.items)).catch(() => {})
-  })
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

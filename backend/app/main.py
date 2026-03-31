@@ -21,10 +21,10 @@ app = FastAPI(title=settings.app_name, version="0.2.0", lifespan=lifespan)
 origins = [item.strip() for item in settings.cors_origins.split(",") if item.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins or ["*"],
+    allow_origins=origins if origins else [],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
 )
 app.include_router(router)
 app.include_router(ws_router)

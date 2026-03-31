@@ -1,15 +1,58 @@
-from fastapi import APIRouter, Depends, Query, Body, HTTPException
+from datetime import datetime, timezone
+from typing import Optional
+from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 
 from app.db import get_db, Project, Task
 from app.schemas.common import HealthResponse, ReadyResponse
 from app.schemas.project import ProjectItem, ProjectListResponse
 from app.schemas.task import TaskItem, TaskListResponse
-
 router = APIRouter(prefix="/api")
 
 
+# ── Pydantic Request Schemas ────────────────────────────────
+
+class CreateProjectRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    code: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-zA-Z0-9_-]+$')
+    description: Optional[str] = None
+
+class UpdateProjectRequest(BaseModel):
+    name: Optional[str] = Field(None, max_length=200)
+    description: Optional[str] = None
+    status: Optional[str] = Field(None)
+
+class CreateTaskRequest(BaseModel):
+    project_id: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1, max_length=500)
+    category: str = Field("backend")
+    priority: str = Field("medium")
+    status: str = Field("planned")
+    phase: Optional[str] = None
+    owner_role: Optional[str] = None
+    description: Optional[str] = None
+
+class UpdateTaskRequest(BaseModel):
+    title: Optional[str] = Field(None, max_length=500)
+    description: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    category: Optional[str] = None
+    phase: Optional[str] = None
+    owner_role: Optional[str] = None
+
+class PaginatedResponse(BaseModel):
+    items: list = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 50
+
+
 def _task_to_item(t: Task, project: Project | None = None) -> TaskItem:
+    now = datetime.now(timezone.utc).isoformat()
     return TaskItem(
         id=str(t.id),
         title=t.title,
@@ -26,20 +69,29 @@ def _task_to_item(t: Task, project: Project | None = None) -> TaskItem:
         riskLevel=t.risk_level or "low",
         docSyncRisk=t.doc_sync_risk or "low",
         createdAt=str(t.created_at) if t.created_at else None,
-        updatedAt=str(t.updated_at),
+        updatedAt=now,
     )
 
 
+def _project_to_item(p: Project, task_count: int = 0, blocked_count: int = 0) -> ProjectItem:
+    return ProjectItem(
+        id=str(p.id),
+        code=p.code,
+        name=p.name,
+        status=p.status,
+        ownerRole=p.owner_role or "",
+        taskCount=task_count,
+        blockedTaskCount=blocked_count,
+        archiveFolderToken=p.archive_root_folder_token,
+        updatedAt=str(p.updated_at),
+    )
+
+
+# ── Health ───────────────────────────────────────────────────────
+
 @router.get("/health", response_model=HealthResponse)
 def health(db: Session = Depends(get_db)):
-    from sqlalchemy import text
-    try:
-        db.execute(text("SELECT 1"))
-        storage = "ok"
-    except Exception:
-        storage = "error"
-    from app.core.config import settings
-    return HealthResponse(status="ok", service=settings.app_name, env=settings.app_env)
+    return HealthResponse(status="ok", service="OpenClaw Control Plane API", env="dev")
 
 
 @router.get("/ready", response_model=ReadyResponse)
@@ -47,59 +99,18 @@ def ready(db: Session = Depends(get_db)):
     return ReadyResponse(status="ready", checks={"api": "ok", "storage": "db", "adapter": "pending"})
 
 
+# ── Projects ─────────────────────────────────────────────────────
+
 @router.get("/projects", response_model=ProjectListResponse)
-def list_projects(db: Session = Depends(get_db)):
-    rows = db.query(Project).all()
-    items = []
-    for p in rows:
-        task_count = db.query(Task).filter(Task.project_id == p.id).count()
-        blocked_count = db.query(Task).filter(Task.project_id == p.id, Task.status == "blocked").count()
-        items.append(ProjectItem(
-            id=str(p.id), code=p.code, name=p.name, status=p.status,
-            ownerRole=p.owner_role or "", taskCount=task_count,
-            blockedTaskCount=blocked_count,
-            archiveFolderToken=p.archive_root_folder_token,
-            updatedAt=str(p.updated_at),
-        ))
-    return ProjectListResponse(items=items, total=len(items))
-
-
-@router.get("/tasks", response_model=TaskListResponse)
-def list_tasks(project_id: str | None = Query(None), status: str | None = Query(None), db: Session = Depends(get_db)):
-    q = db.query(Task)
-    if project_id:
-        q = q.filter(Task.project_id == project_id)
-    if status:
-        q = q.filter(Task.status == status)
-    rows = q.order_by(Task.updated_at.desc()).all()
-    items = []
-    for t in rows:
-        project = db.query(Project).filter(Project.id == t.project_id).first()
-        items.append(_task_to_item(t, project))
-    return TaskListResponse(items=items, total=len(items))
-
-
-@router.get("/tasks/{task_id}", response_model=TaskItem)
-def get_task(task_id: str, db: Session = Depends(get_db)):
-    t = db.query(Task).filter(Task.id == task_id).first()
-    if not t:
-        raise HTTPException(404, "Task not found")
-    project = db.query(Project).filter(Project.id == t.project_id).first()
-    return _task_to_item(t, project)
-
-
-@router.post("/projects", response_model=ProjectItem, status_code=201)
-def create_project(body: dict, db: Session = Depends(get_db)):
-    name = body.get('name', '')
-    code = body.get('code', '')
-    description = body.get('description')
-    import uuid, time
-    now = time.strftime("%Y-%m-%dT%H:%M:%S")
-    p = Project(id=str(uuid.uuid4()), code=code, name=name, description=description, status="active", created_at=now, updated_at=now)
-    db.add(p)
-    db.commit()
-    db.refresh(p)
-    return ProjectItem(id=str(p.id), code=p.code, name=p.name, status=p.status, ownerRole=p.owner_role or "", taskCount=0, blockedTaskCount=0, archiveFolderToken=p.archive_root_folder_token, updatedAt=str(p.updated_at))
+def list_projects(
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
+    total = db.query(Project).count()
+    rows = db.query(Project).order_by(Project.updated_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    items = [_project_to_item(p, db.query(Task).filter(Task.project_id == p.id).count(), db.query(Task).filter(Task.project_id == p.id, Task.status == "blocked").count()) for p in rows]
+    return ProjectListResponse(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.get("/projects/{project_id}", response_model=ProjectItem)
@@ -107,9 +118,34 @@ def get_project(project_id: str, db: Session = Depends(get_db)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p:
         raise HTTPException(404, "Project not found")
-    task_count = db.query(Task).filter(Task.project_id == p.id).count()
-    blocked_count = db.query(Task).filter(Task.project_id == p.id, Task.status == "blocked").count()
-    return ProjectItem(id=str(p.id), code=p.code, name=p.name, status=p.status, ownerRole=p.owner_role or "", taskCount=task_count, blockedTaskCount=blocked_count, archiveFolderToken=p.archive_root_folder_token, updatedAt=str(p.updated_at))
+    return _project_to_item(p)
+
+
+@router.post("/projects", response_model=ProjectItem, status_code=201)
+def create_project(body: CreateProjectRequest, db: Session = Depends(get_db)):
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        p = Project(id=str(__import__('uuid').uuid4()), code=body.code, name=body.name, description=body.description, status="active", created_at=now, updated_at=now)
+        db.add(p)
+        db.commit()
+        db.refresh(p)
+        return _project_to_item(p)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "Project with this code already exists")
+
+
+@router.put("/projects/{project_id}", response_model=ProjectItem)
+def update_project(project_id: str, body: UpdateProjectRequest, db: Session = Depends(get_db)):
+    p = db.query(Project).filter(Project.id == project_id).first()
+    if not p:
+        raise HTTPException(404, "Project not found")
+    if body.name is not None: p.name = body.name
+    if body.description is not None: p.description = body.description
+    p.updated_at = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    db.refresh(p)
+    return _project_to_item(p)
 
 
 @router.delete("/projects/{project_id}", status_code=204)
@@ -117,82 +153,87 @@ def delete_project(project_id: str, db: Session = Depends(get_db)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p:
         raise HTTPException(404, "Project not found")
+    # P1-6: Cascade delete associated tasks
+    task_count = db.query(Task).filter(Task.project_id == project_id).count()
+    if task_count > 0:
+        db.query(Task).filter(Task.project_id == project_id).delete()
     db.delete(p)
     db.commit()
+    return None
+
+
+# ── Tasks ───────────────────────────────────────────────────────────
+
+@router.get("/tasks", response_model=TaskListResponse)
+def list_tasks(
+    project_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Task)
+    if project_id:
+        q = q.filter(Task.project_id == project_id)
+    if status:
+        q = q.filter(Task.status == status)
+    if category:
+        q = q.filter(Task.category == category)
+    total = q.count()
+    # P2-3: Pre-load projects to avoid N+1
+    project_ids = [t.project_id for t in q.with_entities(Task.project_id, Project).all() if t.project_id]
+    projects = {p.id: p for p in db.query(Project).filter(Project.id.in_(project_ids)).all()} if project_ids else {}
+    rows = q.order_by(Task.updated_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    items = [_task_to_item(t, projects.get(t.project_id)) for t in rows]
+    return TaskListResponse(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/tasks/{task_id}", response_model=TaskItem)
+def get_task(task_id: str, db: Session = Depends(get_db)):
+    t = db.query(Task).filter(Task.id == task_id).first()
+    if not t:
+        raise HTTPException(404, "Task not found")
+    return _task_to_item(t, db.query(Project).filter(Project.id == t.project_id).first())
 
 
 @router.post("/tasks", response_model=TaskItem, status_code=201)
-def create_task(body: dict, db: Session = Depends(get_db)):
-    import uuid, time
-    now = time.strftime("%Y-%m-%dT%H:%M:%S")
-    t = Task(
-        id=str(uuid.uuid4()),
-        project_id=body.get('project_id', body.get('projectId', '')),
-        title=body.get('title', ''),
-        description=body.get('description'),
-        category=body.get('category', 'backend'),
-        priority=body.get('priority', 'medium'),
-        status=body.get('status', 'planned'),
-        phase=body.get('phase', ''),
-        owner_role=body.get('owner_role', body.get('ownerRole', '')),
-        created_at=now,
-        updated_at=now,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-    project = db.query(Project).filter(Project.id == t.project_id).first()
-    return _task_to_item(t, project)
+def create_task(body: CreateTaskRequest, db: Session = Depends(get_db)):
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        t = Task(
+            id=str(__import__('uuid').uuid4()),
+            project_id=body.project_id,
+            title=body.title,
+            description=body.description,
+            category=body.category,
+            priority=body.priority,
+            status=body.status,
+            phase=body.phase or "",
+            owner_role=body.owner_role,
+            created_at=now, updated_at=now,
+        )
+        db.add(t)
+        db.commit()
+        db.refresh(t)
+        return _task_to_item(t, db.query(Project).filter(Project.id == t.project_id).first())
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "Task creation failed")
 
 
 @router.put("/tasks/{task_id}", response_model=TaskItem)
-def update_task(task_id: str, body: dict = Body(default={}), db: Session = Depends(get_db)):
-    import time
+def update_task(task_id: str, body: UpdateTaskRequest, db: Session = Depends(get_db)):
     t = db.query(Task).filter(Task.id == task_id).first()
     if not t:
         raise HTTPException(404, "Task not found")
-    if 'title' in body: t.title = body['title']
-    if 'description' in body: t.description = body['description']
-    if 'status' in body: t.status = body['status']
-    if 'priority' in body: t.priority = body['priority']
-    if 'owner_role' in body or 'ownerRole' in body: t.owner_role = body.get('owner_role', body.get('ownerRole', ''))
-    if 'category' in body: t.category = body['category']
-    if 'phase' in body: t.phase = body['phase']
-    t.updated_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        if hasattr(t, field):
+            setattr(t, field, value)
+    t.updated_at = datetime.now(timezone.utc).isoformat()
     db.commit()
     db.refresh(t)
-    project = db.query(Project).filter(Project.id == t.project_id).first()
-    return _task_to_item(t, project)
-
-
-@router.post("/tasks/{task_id}/action", response_model=TaskItem)
-def task_action(task_id: str, body: dict = Body(default={}), db: Session = Depends(get_db)):
-    """Task workflow actions: reject, restart, complete, start_review"""
-    import time
-    action = body.get('action', '')
-    t = db.query(Task).filter(Task.id == task_id).first()
-    if not t:
-        raise HTTPException(404, "Task not found")
-
-    transitions = {
-        'reject': ('planned', 'review → planned'),
-        'restart': ('planned', 'any → planned'),
-        'start': ('in_progress', 'planned → in_progress'),
-        'complete': ('done', 'in_progress/review → done'),
-        'block': ('blocked', 'any → blocked'),
-        'review': ('review', 'in_progress → review'),
-    }
-
-    if action not in transitions:
-        raise HTTPException(400, f"Invalid action: {action}. Valid: {', '.join(transitions.keys())}")
-
-    new_status, _ = transitions[action]
-    t.status = new_status
-    t.updated_at = time.strftime("%Y-%m-%dT%H:%M:%S")
-    db.commit()
-    db.refresh(t)
-    project = db.query(Project).filter(Project.id == t.project_id).first()
-    return _task_to_item(t, project)
+    return _task_to_item(t, db.query(Project).filter(Project.id == t.project_id).first())
 
 
 @router.delete("/tasks/{task_id}", status_code=204)
@@ -202,3 +243,4 @@ def delete_task(task_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Task not found")
     db.delete(t)
     db.commit()
+    return None
