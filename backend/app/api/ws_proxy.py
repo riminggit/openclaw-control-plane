@@ -228,7 +228,7 @@ async def ws_gateway_proxy(client_ws: WebSocket):
     gateway_url = _get_gateway_ws_url()
     identity = _get_or_create_device_identity()
     device_id = identity["deviceId"]
-    role = "client"
+    role = "operator"
     scopes = ["sessions", "cron", "chat"]
 
     # Connect to upstream Gateway
@@ -279,8 +279,8 @@ async def ws_gateway_proxy(client_ws: WebSocket):
         "id": "connect-1",
         "method": "connect",
         "params": {
-            "minProtocol": "1",
-            "maxProtocol": "1",
+            "minProtocol": 3,
+            "maxProtocol": 3,
             "role": role,
             "scopes": scopes,
             "device": {
