@@ -98,7 +98,7 @@ export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
             <label>Owner Role</label>
             <input value={ownerRole} onChange={e => setOwnerRole(e.target.value)} placeholder="e.g. rd-backend-dev" />
           </div>
-          {error && <p className="form-error">{error}</p>}
+          {error && <div className="form-error">{error}</div>}
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading || !title.trim()}>

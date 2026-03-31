@@ -116,5 +116,33 @@
     "label": "Language",
     "zh": "中文",
     "en": "English"
+  },
+  "category": {
+    "requirement": "Requirement",
+    "backend": "Backend",
+    "frontend": "Frontend",
+    "test": "Test",
+    "dba": "DBA",
+    "design": "Design",
+    "devops": "DevOps",
+    "doc": "Doc"
+  },
+  "priority": {
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "status": {
+    "planned": "Planned",
+    "in_progress": "In Progress",
+    "review": "Review",
+    "blocked": "Blocked",
+    "done": "Done",
+    "active": "Active",
+    "archived": "Archived"
+  },
+  "project_status": {
+    "active": "Active",
+    "archived": "Archived"
   }
 }

@@ -3,11 +3,11 @@ import { tasksApi, type TaskItem } from '../api/modules/tasks'
 import { useTranslation } from 'react-i18next'
 
 const COLUMNS = [
-  { key: 'planned', color: '#8ea4d6' },
-  { key: 'in_progress', color: '#6bdfff' },
-  { key: 'review', color: '#ffc83c' },
-  { key: 'blocked', color: '#ff6b6b' },
-  { key: 'done', color: '#6bdf64' },
+  { key: 'planned', labelKey: 'kanban.planned', color: 'var(--text-muted)' },
+  { key: 'in_progress', labelKey: 'kanban.in_progress', color: 'var(--status-blue)' },
+  { key: 'review', labelKey: 'kanban.review', color: 'var(--status-yellow)' },
+  { key: 'blocked', labelKey: 'kanban.blocked', color: 'var(--status-red)' },
+  { key: 'done', labelKey: 'kanban.done', color: 'var(--status-green)' },
 ]
 
 export function KanbanPage() {
@@ -31,57 +31,87 @@ export function KanbanPage() {
     try { await tasksApi.update(dragTask, { status }); fetchTasks() } catch {}
   }
 
-  if (loading) return <div className="page"><p style={{ color: 'var(--text-muted)' }}>{t('app.loading')}</p></div>
-
   return (
     <div>
-      <div className="hero">
-        <div className="eyebrow">{t('kanban.eyebrow')}</div>
+      <div className="page-header">
+        <p className="page-header-eyebrow">{t('kanban.eyebrow')}</p>
         <h1>{t('kanban.title')}</h1>
-        <p className="subtext">{t('kanban.subtitle')}</p>
+        <p className="page-header-desc">{t('kanban.subtitle')}</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16 }}>
-        {COLUMNS.map(col => {
-          const colTasks = tasks.filter(task => task.status === col.key)
-          return (
-            <div
-              key={col.key}
-              className={`kanban-column${dragOver === col.key ? ' drag-over' : ''}`}
-              onDragOver={e => { e.preventDefault(); setDragOver(col.key) }}
-              onDragLeave={() => setDragOver(null)}
-              onDrop={() => handleDrop(col.key)}
-              style={{ minWidth: 220, flex: 1 }}
-            >
-              <div className="kanban-col-header">
-                <span style={{ color: col.color, fontWeight: 600 }}>{t(`kanban.${col.key}`)}</span>
-                <span className="badge" style={{ marginLeft: 8 }}>{colTasks.length}</span>
-              </div>
-              <div className="kanban-cards">
-                {colTasks.map(task => (
-                  <div
-                    key={task.id}
-                    className="kanban-card"
-                    draggable
-                    onDragStart={() => setDragTask(task.id)}
-                    style={{ opacity: dragTask === task.id ? 0.5 : 1, borderColor: col.color + '33' }}
-                  >
-                    <a href={`/tasks/${task.id}`} className="link" style={{ fontWeight: 500, display: 'block', marginBottom: 6 }}>{task.title}</a>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
-                      <span className={`badge badge-priority-${task.priority}`}>{task.priority}</span>
-                      <span>{task.category}</span>
-                    </div>
-                    {task.ownerRole && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>👤 {task.ownerRole}</div>}
-                  </div>
-                ))}
-                {colTasks.length === 0 && (
-                  <div style={{ color: '#5a6a8a', fontSize: 12, textAlign: 'center', padding: 20 }}>{t('kanban.no_tasks')}</div>
-                )}
-              </div>
+      {loading ? (
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+          {COLUMNS.map(col => (
+            <div key={col.key} style={{ flex: 1, minWidth: 220 }}>
+              <div className="skeleton" style={{ width: '50%', height: 20, marginBottom: 16 }} />
+              {[1, 2, 3].map(i => (
+                <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-lg)', marginBottom: 8 }} />
+              ))}
             </div>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 'var(--space-4)', overflowX: 'auto', paddingBottom: 'var(--space-4)' }}>
+          {COLUMNS.map(col => {
+            const colTasks = tasks.filter(task => task.status === col.key)
+            return (
+              <div
+                key={col.key}
+                className="kanban-column"
+                style={{
+                  minWidth: 240,
+                  flex: 1,
+                  borderColor: dragOver === col.key ? col.color : undefined,
+                  background: dragOver === col.key ? 'var(--accent-muted)' : undefined,
+                }}
+                onDragOver={e => { e.preventDefault(); setDragOver(col.key) }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={() => handleDrop(col.key)}
+              >
+                <div className="kanban-col-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: col.color }} />
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>{t(col.labelKey)}</span>
+                  </div>
+                  <span className="badge" style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>{colTasks.length}</span>
+                </div>
+                <div className="kanban-cards">
+                  {colTasks.map(task => (
+                    <div
+                      key={task.id}
+                      className="kanban-card"
+                      draggable
+                      onDragStart={() => setDragTask(task.id)}
+                      onDragEnd={() => { setDragTask(null); setDragOver(null) }}
+                      style={{
+                        opacity: dragTask === task.id ? 0.5 : 1,
+                        boxShadow: dragTask === task.id ? 'var(--shadow-lg)' : undefined,
+                      }}
+                    >
+                      <a href={`/tasks/${task.id}`} style={{ fontWeight: 500, color: 'var(--text-primary)', display: 'block', marginBottom: 8, fontSize: 'var(--text-sm)' }}>{task.title}</a>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span className={`badge badge-priority-${task.priority}`} style={{ fontSize: 10 }}>{task.priority}</span>
+                        <span className="badge" style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-muted)', fontSize: 10 }}>{task.category}</span>
+                      </div>
+                      {task.ownerRole && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                          {task.ownerRole}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {colTasks.length === 0 && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 'var(--space-8)' }}>
+                      {t('kanban.no_tasks')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -116,5 +116,33 @@
     "label": "语言",
     "zh": "中文",
     "en": "English"
+  },
+  "category": {
+    "requirement": "需求",
+    "backend": "后端",
+    "frontend": "前端",
+    "test": "测试",
+    "dba": "数据库",
+    "design": "设计",
+    "devops": "运维",
+    "doc": "文档"
+  },
+  "priority": {
+    "high": "高",
+    "medium": "中",
+    "low": "低"
+  },
+  "status": {
+    "planned": "计划中",
+    "in_progress": "进行中",
+    "review": "审核中",
+    "blocked": "已阻塞",
+    "done": "已完成",
+    "active": "进行中",
+    "archived": "已归档"
+  },
+  "project_status": {
+    "active": "进行中",
+    "archived": "已归档"
   }
 }

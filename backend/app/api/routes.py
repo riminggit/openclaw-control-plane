@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.orm import Session
 
 from app.db import get_db, Project, Task
@@ -82,7 +82,10 @@ def get_task(task_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/projects", response_model=ProjectItem, status_code=201)
-def create_project(name: str, code: str, description: str | None = None, db: Session = Depends(get_db)):
+def create_project(body: dict, db: Session = Depends(get_db)):
+    name = body.get('name', '')
+    code = body.get('code', '')
+    description = body.get('description')
     import uuid, time
     now = time.strftime("%Y-%m-%dT%H:%M:%S")
     p = Project(id=str(uuid.uuid4()), code=code, name=name, description=description, status="active", created_at=now, updated_at=now)
@@ -114,10 +117,17 @@ def delete_project(project_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/tasks", response_model=TaskItem, status_code=201)
-def create_task(project_id: str, title: str, category: str, priority: str = "medium", status: str = "planned", db: Session = Depends(get_db)):
+def create_task(body: dict, db: Session = Depends(get_db)):
+    project_id = body.get('project_id', body.get('projectId', ''))
+    title = body.get('title', '')
+    category = body.get('category', 'backend')
+    priority = body.get('priority', 'medium')
+    status = body.get('status', 'planned')
+    phase = body.get('phase', '')
+    owner_role = body.get('owner_role', body.get('ownerRole', ''))
     import uuid, time
     now = time.strftime("%Y-%m-%dT%H:%M:%S")
-    t = Task(id=str(uuid.uuid4()), project_id=project_id, title=title, category=category, priority=priority, status=status, created_at=now, updated_at=now)
+    t = Task(id=str(uuid.uuid4()), project_id=project_id, title=title, category=category, priority=priority, status=status, phase=phase, owner_role=owner_role, created_at=now, updated_at=now)
     db.add(t)
     db.commit()
     db.refresh(t)
@@ -125,17 +135,18 @@ def create_task(project_id: str, title: str, category: str, priority: str = "med
 
 
 @router.put("/tasks/{task_id}", response_model=TaskItem)
-def update_task(task_id: str, title: str | None = None, status: str | None = None, priority: str | None = None, owner_role: str | None = None, category: str | None = None, phase: str | None = None, db: Session = Depends(get_db)):
+def update_task(task_id: str, body: dict = Body(default={}), db: Session = Depends(get_db)):
     from fastapi import HTTPException
     import time
     t = db.query(Task).filter(Task.id == task_id).first()
     if not t:
         raise HTTPException(404, "Task not found")
-    if title is not None: t.title = title
-    if status is not None: t.status = status
-    if priority is not None: t.priority = priority
-    if owner_role is not None: t.owner_role = owner_role
-    if category is not None: t.category = category
+    if 'title' in body: t.title = body['title']
+    if 'status' in body: t.status = body['status']
+    if 'priority' in body: t.priority = body['priority']
+    if 'owner_role' in body or 'ownerRole' in body: t.owner_role = body.get('owner_role', body.get('ownerRole', ''))
+    if 'category' in body: t.category = body['category']
+    if 'phase' in body: t.phase = body['phase']
     if phase is not None: t.phase = phase
     t.updated_at = time.strftime("%Y-%m-%dT%H:%M:%S")
     db.commit()

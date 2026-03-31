@@ -48,77 +48,109 @@ export function ProjectsPage() {
 
   return (
     <div>
-      <div className="hero">
-        <div className="eyebrow">{t('projects.eyebrow')}</div>
+      <div className="page-header">
+        <p className="page-header-eyebrow">{t('projects.eyebrow')}</p>
         <h1>{t('projects.title')}</h1>
-        <p className="subtext">{t('projects.subtitle')}</p>
-      </div>
-
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
-        <input
-          className="search-input"
-          placeholder={t('app.search')}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <div style={{ flex: 1 }} />
-        <button className="btn btn-primary" onClick={() => setShowForm(true)}>{t('projects.new_project')}</button>
+        <p className="page-header-desc">{t('projects.subtitle')}</p>
+        <div className="page-header-actions">
+          <div className="search-box" style={{ width: 240 }}>
+            <svg className="search-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input className="search-box-input" placeholder={t('app.search')} value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+            {t('projects.new_project')}
+          </button>
+        </div>
       </div>
 
       {showForm && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <h3>{t('projects.form_title')}</h3>
-          <form onSubmit={handleCreate} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
-              <label>{t('projects.form_code')}</label>
-              <input value={formCode} onChange={e => setFormCode(e.target.value)} placeholder={t('projects.form_code_placeholder')} required />
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('projects.form_title')}</h2>
+              <button className="modal-close" onClick={() => setShowForm(false)}>×</button>
             </div>
-            <div className="form-group" style={{ flex: 2, minWidth: 150 }}>
-              <label>{t('projects.form_name')}</label>
-              <input value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('projects.form_name_placeholder')} required />
-            </div>
-            <div className="form-group" style={{ flex: 2, minWidth: 150 }}>
-              <label>{t('projects.form_desc')}</label>
-              <input value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder={t('projects.form_desc_placeholder')} />
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? t('app.saving') : t('app.create')}</button>
-            <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>{t('app.cancel')}</button>
-          </form>
+            <form onSubmit={handleCreate}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>{t('projects.form_code')} *</label>
+                  <input value={formCode} onChange={e => setFormCode(e.target.value)} placeholder={t('projects.form_code_placeholder')} required />
+                </div>
+                <div className="form-group">
+                  <label>{t('projects.form_name')} *</label>
+                  <input value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('projects.form_name_placeholder')} required />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>{t('projects.form_desc')}</label>
+                <input value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder={t('projects.form_desc_placeholder')} />
+              </div>
+              {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
+              <div className="form-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>{t('app.cancel')}</button>
+                <button type="submit" className="btn btn-primary" disabled={saving || !formCode.trim() || !formName.trim()}>
+                  {saving ? t('app.saving') : t('app.create')}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
-      {loading && <p style={{ color: 'var(--text-muted)' }}>{t('app.loading')}</p>}
-      {error && <p style={{ color: '#ff6b6b' }}>Error: {error}</p>}
+      {loading && (
+        <div className="project-grid">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="card" style={{ padding: 'var(--space-5)' }}>
+              <div className="skeleton" style={{ width: '30%', height: 14, marginBottom: 12 }} />
+              <div className="skeleton" style={{ width: '60%', height: 20, marginBottom: 16 }} />
+              <div className="skeleton" style={{ width: '80%', height: 14 }} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {!loading && filtered.length === 0 && (
-        <div className="card empty-state">
-          <div className="empty-icon">📂</div>
-          <p style={{ color: 'var(--text-muted)' }}>{t('projects.no_projects')}</p>
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon">📂</div>
+            <div className="empty-state-title">{t('projects.no_projects')}</div>
+            <button className="btn btn-primary" onClick={() => setShowForm(true)}>{t('projects.new_project')}</button>
+          </div>
         </div>
       )}
 
-      {filtered.length > 0 && (
-        <table className="task-table">
-          <thead>
-            <tr><th>{t('projects.code')}</th><th>{t('projects.name')}</th><th>{t('projects.status')}</th><th>{t('projects.tasks')}</th><th>{t('projects.blocked')}</th><th>{t('projects.owner')}</th><th>{t('app.updated')}</th><th>{t('app.actions')}</th></tr>
-          </thead>
-          <tbody>
-            {filtered.map(p => (
-              <tr key={p.id}>
-                <td className="mono"><a href={`/projects/${p.id}`} className="link">{p.code}</a></td>
-                <td><a href={`/projects/${p.id}`} className="link">{p.name}</a></td>
-                <td><span className={`badge badge-${p.status}`}>{p.status}</span></td>
-                <td>{p.taskCount}</td>
-                <td style={{ color: p.blockedTaskCount > 0 ? '#ff6b6b' : 'var(--text-muted)' }}>{p.blockedTaskCount}</td>
-                <td>{p.ownerRole}</td>
-                <td>{new Date(p.updatedAt).toLocaleString()}</td>
-                <td>
-                  <button className="btn-icon" title={t('app.delete')} onClick={() => handleDelete(p.id)}>🗑️</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {!loading && filtered.length > 0 && (
+        <div className="project-grid">
+          {filtered.map(p => (
+            <a key={p.id} href={`/projects/${p.id}`} className="project-card">
+              <div className="project-card-header">
+                <span className="project-card-code">{p.code}</span>
+                <span className={`badge badge-${p.status}`}>{p.status}</span>
+              </div>
+              <div className="project-card-name">{p.name}</div>
+              <div className="project-card-meta">
+                <span>📋 {p.taskCount} {t('projects.tasks')}</span>
+                {p.blockedTaskCount > 0 && (
+                  <span style={{ color: 'var(--status-red)' }}>🚫 {p.blockedTaskCount}</span>
+                )}
+                <button
+                  className="btn-icon"
+                  title={t('app.delete')}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); handleDelete(p.id) }}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                </button>
+              </div>
+            </a>
+          ))}
+        </div>
       )}
     </div>
   )
