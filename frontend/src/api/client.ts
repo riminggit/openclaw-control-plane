@@ -23,8 +23,11 @@ export async function apiPost<T>(url: string, body: Record<string, unknown>): Pr
 }
 
 export async function apiPut<T>(url: string, body: Record<string, unknown> = {}): Promise<T> {
-  const qs = new URLSearchParams(body as Record<string, string>).toString()
-  const res = await fetch(`${BASE}${url}${qs ? '?' + qs : ''}`, { method: 'PUT' })
+  const res = await fetch(`${BASE}${url}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
     throw new Error(`API ${res.status}: ${text}`)
