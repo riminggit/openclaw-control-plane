@@ -42,3 +42,16 @@ export async function apiDelete(url: string): Promise<void> {
     throw new Error(`API ${res.status}: ${text}`)
   }
 }
+
+export async function apiPatch<T>(url: string, body: Record<string, unknown> = {}): Promise<T> {
+  const res = await fetch(`${BASE}${url}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`API ${res.status}: ${text}`)
+  }
+  return res.json()
+}
