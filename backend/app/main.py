@@ -14,6 +14,10 @@ from app.api.kanban import router as kanban_router
 from app.api.agents_mgmt import router as agents_mgmt_router
 from app.api.channels import router as channels_router
 from app.api.logs import router as logs_router
+from app.api.services import router as services_router
+from app.api.skills import router as skills_router
+from app.api.memory import router as memory_router
+from app.api.usage import router as usage_router
 
 
 @asynccontextmanager
@@ -42,6 +46,10 @@ app.include_router(kanban_router)
 app.include_router(agents_mgmt_router)
 app.include_router(channels_router)
 app.include_router(logs_router)
+app.include_router(services_router)
+app.include_router(skills_router)
+app.include_router(memory_router)
+app.include_router(usage_router)
 app.add_middleware(ApiKeyMiddleware)
 
 
