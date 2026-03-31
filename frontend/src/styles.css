@@ -345,3 +345,4 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .project-grid { grid-template-columns: 1fr; }
   .page-content { padding: var(--space-4); }
   .form-row { flex-direction: column; }
+}
