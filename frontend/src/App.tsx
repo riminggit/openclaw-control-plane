@@ -16,6 +16,10 @@ import { AgentLifecyclePage } from './pages/AgentLifecyclePage'
 import { AgentsPage } from './pages/AgentsPage'
 import { ChannelsPage } from './pages/ChannelsPage'
 import { LogsPage } from './pages/LogsPage'
+import { ServicesPage } from './pages/ServicesPage'
+import { SkillsPage } from './pages/SkillsPage'
+import { MemoryPage } from './pages/MemoryPage'
+import { UsagePage } from './pages/UsagePage'
 import { ThemeProvider } from './components/ThemeProvider'
 import { GatewayProvider } from './hooks/useGateway'
 
@@ -42,6 +46,10 @@ export default function App() {
               <Route path="agents-mgmt" element={<AgentsPage />} />
               <Route path="channels" element={<ChannelsPage />} />
               <Route path="logs" element={<LogsPage />} />
+              <Route path="services" element={<ServicesPage />} />
+              <Route path="skills" element={<SkillsPage />} />
+              <Route path="memory" element={<MemoryPage />} />
+              <Route path="usage" element={<UsagePage />} />
             </Route>
           </Routes>
         </GatewayProvider>

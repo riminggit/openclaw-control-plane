@@ -20,7 +20,8 @@
     "on": "开",
     "off": "关",
     "confirm_delete_project": "确定要删除该项目吗？关联的任务也将被删除。",
-    "confirm_delete_task": "确定要删除该任务吗？"
+    "confirm_delete_task": "确定要删除该任务吗？",
+    "confirm": "确认"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -38,7 +39,11 @@
     "toggle_sidebar": "收起侧边栏",
     "agents_mgmt": "Agent 管理",
     "channels": "渠道管理",
-    "logs": "日志查看器"
+    "logs": "日志查看器",
+    "services": "服务管理",
+    "skills": "插件管理",
+    "memory": "记忆浏览器",
+    "usage": "用量统计"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime 控制平面",
@@ -376,5 +381,74 @@
     "auto_refresh": "自动刷新 (5s)",
     "export": "导出",
     "no_logs": "暂无日志"
+  },
+  "services": {
+    "eyebrow": "服务管理",
+    "title": "服务管理",
+    "gateway_status": "Gateway 状态",
+    "running": "运行中",
+    "stopped": "已停止",
+    "version": "版本信息",
+    "new_version": "新版本可用",
+    "system_resources": "系统资源",
+    "health_check": "健康检查",
+    "restart_gateway": "重启 Gateway",
+    "confirm_restart": "确定要重启 Gateway 吗？所有会话将被中断。",
+    "config_editor": "配置编辑器",
+    "unsaved": "未保存",
+    "saved": "已保存",
+    "save_and_restart": "保存并重启",
+    "backups": "配置备份",
+    "create_backup": "创建备份",
+    "no_backups": "暂无备份",
+    "restore": "恢复",
+    "confirm_restore": "确定要恢复此备份吗？当前配置将被覆盖。"
+  },
+  "skills": {
+    "eyebrow": "插件管理",
+    "title": "Skill 管理",
+    "tab_installed": "已安装",
+    "tab_store": "商店搜索",
+    "ready": "就绪",
+    "missing": "缺失",
+    "disabled": "已禁用",
+    "blocked": "已阻止",
+    "update": "更新",
+    "uninstall": "卸载",
+    "install": "安装",
+    "search_placeholder": "搜索 Skill...",
+    "no_installed": "暂无已安装 Skill",
+    "no_results": "无搜索结果"
+  },
+  "memory": {
+    "eyebrow": "记忆浏览器",
+    "title": "Memory 浏览器",
+    "export_zip": "导出 ZIP",
+    "search_placeholder": "搜索文件内容...",
+    "no_files": "暂无文件",
+    "select_file": "选择文件以查看内容",
+    "edit_mode": "编辑",
+    "preview_mode": "预览",
+    "new_file": "新建",
+    "download": "下载",
+    "confirm_delete": "确定要删除此文件吗？",
+    "new_file_prompt": "新文件名:"
+  },
+  "usage": {
+    "eyebrow": "用量统计",
+    "title": "Usage 统计",
+    "range_today": "今日",
+    "range_7d": "7天",
+    "range_30d": "30天",
+    "total_tokens": "总 Token 数",
+    "daily_avg": "日均",
+    "peak_session": "峰值 Session",
+    "top_sessions": "Top Session 排行",
+    "session_name": "Session",
+    "agent": "Agent",
+    "tokens": "Tokens",
+    "model_distribution": "模型用量分布",
+    "no_sessions": "暂无数据",
+    "no_models": "暂无数据"
   }
 }

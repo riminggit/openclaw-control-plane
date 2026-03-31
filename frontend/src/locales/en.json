@@ -20,7 +20,8 @@
     "on": "On",
     "off": "Off",
     "confirm_delete_project": "Delete this project? Associated tasks will also be deleted.",
-    "confirm_delete_task": "Delete this task?"
+    "confirm_delete_task": "Delete this task?",
+    "confirm": "Confirm"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -38,7 +39,11 @@
     "toggle_sidebar": "Collapse",
     "agents_mgmt": "Agent Mgmt",
     "channels": "Channels",
-    "logs": "Logs"
+    "logs": "Logs",
+    "services": "Services",
+    "skills": "Skills",
+    "memory": "Memory",
+    "usage": "Usage"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime Control Plane",
@@ -376,5 +381,74 @@
     "auto_refresh": "Auto Refresh (5s)",
     "export": "Export",
     "no_logs": "No logs available"
+  },
+  "services": {
+    "eyebrow": "Services",
+    "title": "Service Management",
+    "gateway_status": "Gateway Status",
+    "running": "Running",
+    "stopped": "Stopped",
+    "version": "Version",
+    "new_version": "New version available",
+    "system_resources": "System Resources",
+    "health_check": "Health Check",
+    "restart_gateway": "Restart Gateway",
+    "confirm_restart": "Restart Gateway? All sessions will be interrupted.",
+    "config_editor": "Config Editor",
+    "unsaved": "Unsaved",
+    "saved": "Saved",
+    "save_and_restart": "Save & Restart",
+    "backups": "Config Backups",
+    "create_backup": "Create Backup",
+    "no_backups": "No backups",
+    "restore": "Restore",
+    "confirm_restore": "Restore this backup? Current config will be overwritten."
+  },
+  "skills": {
+    "eyebrow": "Skills",
+    "title": "Skill Management",
+    "tab_installed": "Installed",
+    "tab_store": "Store",
+    "ready": "Ready",
+    "missing": "Missing",
+    "disabled": "Disabled",
+    "blocked": "Blocked",
+    "update": "Update",
+    "uninstall": "Uninstall",
+    "install": "Install",
+    "search_placeholder": "Search skills...",
+    "no_installed": "No skills installed",
+    "no_results": "No results"
+  },
+  "memory": {
+    "eyebrow": "Memory",
+    "title": "Memory Browser",
+    "export_zip": "Export ZIP",
+    "search_placeholder": "Search file content...",
+    "no_files": "No files",
+    "select_file": "Select a file to view",
+    "edit_mode": "Edit",
+    "preview_mode": "Preview",
+    "new_file": "New",
+    "download": "Download",
+    "confirm_delete": "Delete this file?",
+    "new_file_prompt": "New file name:"
+  },
+  "usage": {
+    "eyebrow": "Usage",
+    "title": "Usage Statistics",
+    "range_today": "Today",
+    "range_7d": "7 Days",
+    "range_30d": "30 Days",
+    "total_tokens": "Total Tokens",
+    "daily_avg": "Daily Avg",
+    "peak_session": "Peak Session",
+    "top_sessions": "Top Sessions",
+    "session_name": "Session",
+    "agent": "Agent",
+    "tokens": "Tokens",
+    "model_distribution": "Model Distribution",
+    "no_sessions": "No data",
+    "no_models": "No data"
   }
 }
