@@ -20,7 +20,7 @@ export function useSessions(limit = 50) {
     if (connState !== 'connected') return
     setLoading(true)
     try {
-      const res = await gatewayClient.call('sessions.list', { limit, activeMinutes: 1440, messageLimit: 0 })
+      const res = await gatewayClient.call('sessions.list', { limit, activeMinutes: 1440 })
       setSessions(Array.isArray(res) ? res : res?.sessions || [])
     } catch { /* ignore */ } finally { setLoading(false) }
   }, [connState, limit])

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 export function SessionsPage() {
   const { t } = useTranslation()
   const connState = useConnectionState()
-  const { sessions, loading } = useSessions(100)
+  const { sessions, loading } = useSessions(50)
 
   if (connState !== 'connected') {
     return (
@@ -16,6 +16,8 @@ export function SessionsPage() {
       </div>
     )
   }
+
+  const total = sessions.length
 
   return (
     <div>
@@ -28,7 +30,7 @@ export function SessionsPage() {
       <div className="card">
         {loading ? (
           <div className="card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>{t('app.loading')}</div>
-        ) : !sessions || sessions.length === 0 ? (
+        ) : total === 0 ? (
           <div className="card-body empty-state" style={{ padding: 'var(--space-10)' }}>
             <div className="empty-state-icon">💬</div>
             <div className="empty-state-desc">{t('sessions.no_sessions')}</div>
@@ -40,22 +42,27 @@ export function SessionsPage() {
                 <tr>
                   <th>{t('sessions.key')}</th>
                   <th>{t('sessions.agent')}</th>
-                  <th>{t('sessions.state')}</th>
-                  <th>{t('sessions.messages')}</th>
+                  <th>{t('sessions.channel')}</th>
+                  <th>{t('sessions.tokens')}</th>
                   <th>{t('sessions.last_active')}</th>
                 </tr>
               </thead>
               <tbody>
                 {sessions.map((s: any, i: number) => {
                   const key = s.key || s.sessionKey
-                  const isActive = s.active || s.state === 'active'
                   return (
                     <tr key={key || i}>
-                      <td className="mono"><Link to={`/sessions/${encodeURIComponent(key)}`}>{key}</Link></td>
-                      <td>{s.agent || s.kind || '-'}</td>
-                      <td><span className={`badge badge-${isActive ? 'active' : 'archived'}`}>{isActive ? 'Active' : (s.state || '-')}</span></td>
-                      <td>{s.messageCount ?? s.messages ?? '-'}</td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{s.lastActive ? new Date(s.lastActive).toLocaleString() : '-'}</td>
+                      <td className="mono" style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <Link to={`/sessions/${encodeURIComponent(key)}`}>{key}</Link>
+                      </td>
+                      <td>{s.kind || s.label || '-'}</td>
+                      <td>{s.channel || '-'}</td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                        {s.totalTokens ? `${(s.totalTokens / 1000).toFixed(1)}k` : '-'}
+                      </td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                        {s.updatedAt ? new Date(s.updatedAt).toLocaleString() : '-'}
+                      </td>
                     </tr>
                   )
                 })}
