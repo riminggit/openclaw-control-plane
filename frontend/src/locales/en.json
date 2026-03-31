@@ -120,7 +120,8 @@
     "state_connecting": "Connecting...",
     "state_disconnected": "Disconnected",
     "state_error": "Connection Error",
-    "status": "Connection Status"
+    "status": "Connection Status",
+    "proxy_note": "Gateway connection is proxied by the backend. No manual configuration needed."
   },
   "kanban": {
     "eyebrow": "Kanban",

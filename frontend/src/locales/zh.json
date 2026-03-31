@@ -120,7 +120,8 @@
     "state_connecting": "连接中...",
     "state_disconnected": "未连接",
     "state_error": "连接错误",
-    "status": "连接状态"
+    "status": "连接状态",
+    "proxy_note": "Gateway 连接由后端代理，无需手动配置。"
   },
   "kanban": {
     "eyebrow": "看板",

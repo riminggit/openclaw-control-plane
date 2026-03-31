@@ -10,7 +10,9 @@ export function GatewayProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState(gatewayClient.state)
   useEffect(() => {
     gatewayClient.onStateChange(setState)
-    return () => { gatewayClient.onStateChange(() => {}) }
+    // Auto-connect via backend proxy (token handled server-side)
+    gatewayClient.connect()
+    return () => { gatewayClient.onStateChange(() => {}); gatewayClient.disconnect() }
   }, [])
   return <GatewayContext.Provider value={gatewayClient}>{children}</GatewayContext.Provider>
 }

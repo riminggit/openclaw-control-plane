@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.core.auth import ApiKeyMiddleware
 from app.db import init_db, seed_db
 from app.api.routes import router
+from app.api.ws_proxy import router as ws_router
 
 
 @asynccontextmanager
@@ -26,6 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
+app.include_router(ws_router)
 app.add_middleware(ApiKeyMiddleware)
 
 

@@ -8,10 +8,18 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>
 }
 
+/**
+ * Build the WebSocket proxy URL based on current browser location.
+ * The backend proxies to Gateway, so token auth is handled server-side.
+ */
+function buildProxyUrl(): string {
+  const loc = window.location
+  const wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${wsProto}//${loc.host}/ws/gateway`
+}
+
 export class GatewayClient {
   private ws: WebSocket | null = null
-  private url = ''
-  private token = ''
   private _state: ConnectionState = 'disconnected'
   private nextId = 1
   private pending = new Map<number, PendingRequest>()
@@ -32,10 +40,9 @@ export class GatewayClient {
     this._onStateChange?.(s)
   }
 
-  connect(url: string, token: string) {
+  /** Connect to the backend WebSocket proxy (no token needed client-side). */
+  connect() {
     this.disconnect()
-    this.url = url
-    this.token = token
     this.shouldReconnect = true
     this.reconnectDelay = 1000
     this._doConnect()
@@ -43,8 +50,9 @@ export class GatewayClient {
 
   private _doConnect() {
     this.setState('connecting')
+    const url = buildProxyUrl()
     try {
-      this.ws = new WebSocket(this.url)
+      this.ws = new WebSocket(url)
     } catch {
       this.setState('error')
       this._scheduleReconnect()
@@ -52,8 +60,8 @@ export class GatewayClient {
     }
 
     this.ws.onopen = () => {
-      // Send connect frame
-      this._sendRaw({ type: 'req', id: 0, method: 'connect', params: { auth: { token: this.token }, role: 'client' } })
+      // The backend proxy sends the connect frame with token automatically.
+      // We just wait for the connect response from Gateway.
     }
 
     this.ws.onmessage = (ev) => {
@@ -69,7 +77,6 @@ export class GatewayClient {
 
     this.ws.onclose = () => {
       this.setState('disconnected')
-      // Reject all pending
       for (const [id, req] of this.pending) {
         clearTimeout(req.timer)
         req.reject(new Error('Connection closed'))
@@ -82,7 +89,7 @@ export class GatewayClient {
   private _handleMessage(msg: any) {
     if (msg.type === 'res') {
       if (msg.id === 0) {
-        // connect response
+        // connect response (brokered by backend proxy)
         if (msg.ok) {
           this.setState('connected')
           this.reconnectDelay = 1000
@@ -102,7 +109,6 @@ export class GatewayClient {
     } else if (msg.type === 'event' && msg.event) {
       const cbs = this.listeners.get(msg.event)
       if (cbs) cbs.forEach(cb => { try { cb(msg.payload) } catch { /* */ } })
-      // wildcard
       const all = this.listeners.get('*')
       if (all) all.forEach(cb => { try { cb(msg) } catch { /* */ } })
     }
@@ -160,19 +166,6 @@ export class GatewayClient {
       req.reject(new Error('Disconnected'))
       this.pending.delete(id)
     }
-  }
-
-  // Convenience: load saved config and auto-connect
-  static loadConfig(): { url: string; token: string } {
-    return {
-      url: localStorage.getItem('gateway_url') || 'ws://127.0.0.1:18789/',
-      token: localStorage.getItem('gateway_token') || '',
-    }
-  }
-
-  static saveConfig(url: string, token: string) {
-    localStorage.setItem('gateway_url', url)
-    localStorage.setItem('gateway_token', token)
   }
 }
 
