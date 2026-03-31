@@ -35,7 +35,10 @@
     "kanban": "Kanban",
     "analytics": "Cost Analytics",
     "lifecycle": "Agent Lifecycle",
-    "toggle_sidebar": "Collapse"
+    "toggle_sidebar": "Collapse",
+    "agents_mgmt": "Agent Mgmt",
+    "channels": "Channels",
+    "logs": "Logs"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime Control Plane",
@@ -323,5 +326,55 @@
     "high": "High",
     "medium": "Medium",
     "low": "Low"
+  },
+  "agents_mgmt": {
+    "eyebrow": "Agent Management",
+    "title": "Agent Management Panel",
+    "subtitle": "Create, edit and manage OpenClaw Agents",
+    "add_agent": "Add Agent",
+    "edit_agent": "Edit Agent",
+    "no_agents": "No Agents yet",
+    "create_hint": "Click the button above to add your first Agent",
+    "template": "Quick Templates",
+    "field_name": "Name",
+    "name_placeholder": "Enter agent name",
+    "field_desc": "Description",
+    "desc_placeholder": "Brief description of agent purpose",
+    "field_model": "Model",
+    "field_prompt": "System Prompt",
+    "prompt_placeholder": "Enter system prompt...",
+    "confirm_delete": "Confirm Delete",
+    "confirm_delete_desc": "This action cannot be undone. Agent config will be permanently deleted.",
+    "test_agent": "Test Agent",
+    "test_placeholder": "Enter test message...",
+    "send_test": "Send",
+    "col_name": "Name",
+    "col_model": "Model",
+    "col_status": "Status",
+    "col_channels": "Channels",
+    "col_updated": "Updated"
+  },
+  "channels": {
+    "eyebrow": "Channel Management",
+    "title": "Channel Configuration",
+    "subtitle": "Manage messaging channel connections and config",
+    "refresh": "Refresh",
+    "test_conn": "Test Connection",
+    "status_connected": "Connected",
+    "status_disconnected": "Disconnected",
+    "status_unconfigured": "Unconfigured"
+  },
+  "logs": {
+    "eyebrow": "Log Viewer",
+    "title": "System Logs",
+    "subtitle": "Real-time Gateway and backend log viewer",
+    "source_gateway": "Gateway Log",
+    "source_error": "Error Log",
+    "source_backend": "Backend Log",
+    "search_placeholder": "Search logs...",
+    "refresh": "Refresh",
+    "auto_refresh": "Auto Refresh (5s)",
+    "export": "Export",
+    "no_logs": "No logs available"
   }
 }

@@ -35,7 +35,10 @@
     "kanban": "看板",
     "analytics": "成本分析",
     "lifecycle": "Agent 生命周期",
-    "toggle_sidebar": "收起侧边栏"
+    "toggle_sidebar": "收起侧边栏",
+    "agents_mgmt": "Agent 管理",
+    "channels": "渠道管理",
+    "logs": "日志查看器"
   },
   "dashboard": {
     "eyebrow": "OpenClaw Runtime 控制平面",
@@ -323,5 +326,55 @@
     "high": "高",
     "medium": "中",
     "low": "低"
+  },
+  "agents_mgmt": {
+    "eyebrow": "Agent 管理",
+    "title": "Agent 管理面板",
+    "subtitle": "创建、编辑和管理 OpenClaw Agent",
+    "add_agent": "添加 Agent",
+    "edit_agent": "编辑 Agent",
+    "no_agents": "暂无 Agent",
+    "create_hint": "点击右上角按钮添加第一个 Agent",
+    "template": "快速模板",
+    "field_name": "名称",
+    "name_placeholder": "输入 Agent 名称",
+    "field_desc": "描述",
+    "desc_placeholder": "简要描述 Agent 用途",
+    "field_model": "模型",
+    "field_prompt": "角色 Prompt",
+    "prompt_placeholder": "输入 System Prompt...",
+    "confirm_delete": "确认删除",
+    "confirm_delete_desc": "此操作不可撤销，Agent 配置将被永久删除。",
+    "test_agent": "测试 Agent",
+    "test_placeholder": "输入测试消息...",
+    "send_test": "发送",
+    "col_name": "名称",
+    "col_model": "模型",
+    "col_status": "状态",
+    "col_channels": "渠道",
+    "col_updated": "更新时间"
+  },
+  "channels": {
+    "eyebrow": "渠道管理",
+    "title": "渠道配置",
+    "subtitle": "管理消息渠道连接和配置",
+    "refresh": "刷新",
+    "test_conn": "测试连接",
+    "status_connected": "已连接",
+    "status_disconnected": "已断开",
+    "status_unconfigured": "未配置"
+  },
+  "logs": {
+    "eyebrow": "日志查看器",
+    "title": "系统日志",
+    "subtitle": "实时查看 Gateway 和后端日志",
+    "source_gateway": "Gateway 日志",
+    "source_error": "错误日志",
+    "source_backend": "后端日志",
+    "search_placeholder": "搜索日志内容...",
+    "refresh": "刷新",
+    "auto_refresh": "自动刷新 (5s)",
+    "export": "导出",
+    "no_logs": "暂无日志"
   }
 }
