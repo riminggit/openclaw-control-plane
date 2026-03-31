@@ -1,0 +1,120 @@
+{
+  "app": {
+    "brand": "OpenClaw Control",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "delete": "Delete",
+    "edit": "Edit",
+    "actions": "Actions",
+    "confirm_delete_project": "Delete this project and all its tasks?",
+    "confirm_delete_task": "Delete this task?",
+    "search": "Search...",
+    "no_data": "No data",
+    "total": "Total: {{count}}",
+    "saving": "Saving...",
+    "created": "Created",
+    "updated": "Updated",
+    "back": "← Back to list"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "tasks": "Tasks",
+    "kanban": "Kanban"
+  },
+  "dashboard": {
+    "eyebrow": "OpenClaw Runtime Control Plane",
+    "title": "OpenClaw Control Plane",
+    "subtitle": "MVP Live Dashboard — Backend connected to real API",
+    "projects": "Projects",
+    "tasks_count": "Tasks",
+    "blocked": "Blocked",
+    "in_progress": "In Progress",
+    "project_list": "Project List",
+    "recent_tasks": "Recent Tasks (Top 10)",
+    "no_projects": "No projects yet",
+    "no_tasks": "No tasks yet"
+  },
+  "projects": {
+    "eyebrow": "Project Management",
+    "title": "Projects",
+    "subtitle": "Manage projects and view task breakdowns",
+    "new_project": "+ New Project",
+    "code": "Code",
+    "name": "Name",
+    "status": "Status",
+    "tasks": "Tasks",
+    "blocked": "Blocked",
+    "owner": "Owner",
+    "no_projects": "No projects yet. Click to create one.",
+    "form_title": "New Project",
+    "form_code": "Code *",
+    "form_name": "Name *",
+    "form_desc": "Description",
+    "form_code_placeholder": "OCP",
+    "form_name_placeholder": "Project name",
+    "form_desc_placeholder": "Optional",
+    "detail": {
+      "info": "Project Info",
+      "description": "Description",
+      "no_description": "No description",
+      "tasks_list": "Tasks",
+      "no_tasks": "No tasks in this project"
+    }
+  },
+  "tasks": {
+    "eyebrow": "Task Management",
+    "title": "Task List",
+    "subtitle": "View and manage all tasks across projects",
+    "new_task": "+ New Task",
+    "title_col": "Title",
+    "project": "Project",
+    "status": "Status",
+    "priority": "Priority",
+    "owner": "Owner",
+    "no_tasks": "No matching tasks found",
+    "all_projects": "All Projects",
+    "all_status": "All Status",
+    "all_priority": "All Priority",
+    "form_title": "New Task",
+    "form_edit_title": "Edit Task",
+    "detail": {
+      "info": "Task Info",
+      "description": "Description",
+      "no_description": "No description",
+      "status_history": "Status History",
+      "no_history": "No status changes recorded",
+      "category": "Category",
+      "phase": "Phase",
+      "risk": "Risk Level",
+      "doc_sync_risk": "Doc Sync Risk"
+    }
+  },
+  "kanban": {
+    "eyebrow": "Kanban",
+    "title": "Kanban Board",
+    "subtitle": "Drag tasks between columns to update status",
+    "planned": "Planned",
+    "in_progress": "In Progress",
+    "review": "Review",
+    "blocked": "Blocked",
+    "done": "Done",
+    "no_tasks": "No tasks"
+  },
+  "theme": {
+    "label": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "cyberpunk": "Cyberpunk",
+    "forest": "Forest",
+    "ocean": "Ocean"
+  },
+  "language": {
+    "label": "Language",
+    "zh": "中文",
+    "en": "English"
+  }
+}

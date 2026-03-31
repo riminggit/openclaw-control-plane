@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.db
+.env
+.venv/
+__pycache__/
+*.pyc
+docs/_quarantine/
+*.bak

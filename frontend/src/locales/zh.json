@@ -1,0 +1,120 @@
+{
+  "app": {
+    "brand": "OpenClaw 控制台",
+    "loading": "加载中...",
+    "retry": "重试",
+    "cancel": "取消",
+    "save": "保存",
+    "create": "创建",
+    "delete": "删除",
+    "edit": "编辑",
+    "actions": "操作",
+    "confirm_delete_project": "确定要删除该项目及其所有任务吗？",
+    "confirm_delete_task": "确定要删除该任务吗？",
+    "search": "搜索...",
+    "no_data": "暂无数据",
+    "total": "共 {{count}} 条",
+    "saving": "保存中...",
+    "created": "创建时间",
+    "updated": "更新时间",
+    "back": "← 返回列表"
+  },
+  "nav": {
+    "dashboard": "仪表盘",
+    "projects": "项目",
+    "tasks": "任务",
+    "kanban": "看板"
+  },
+  "dashboard": {
+    "eyebrow": "OpenClaw Runtime 上层控制平面",
+    "title": "OpenClaw 控制面板",
+    "subtitle": "MVP 实时数据面板 — 后端已接入真实 API",
+    "projects": "项目数",
+    "tasks_count": "任务数",
+    "blocked": "阻塞任务",
+    "in_progress": "进行中",
+    "project_list": "项目列表",
+    "recent_tasks": "最近任务（前10）",
+    "no_projects": "暂无项目",
+    "no_tasks": "暂无任务"
+  },
+  "projects": {
+    "eyebrow": "项目管理",
+    "title": "项目列表",
+    "subtitle": "管理项目并查看任务分解",
+    "new_project": "+ 新建项目",
+    "code": "编码",
+    "name": "名称",
+    "status": "状态",
+    "tasks": "任务数",
+    "blocked": "阻塞",
+    "owner": "负责人",
+    "no_projects": "暂无项目，点击右上角创建",
+    "form_title": "新建项目",
+    "form_code": "项目编码 *",
+    "form_name": "项目名称 *",
+    "form_desc": "描述",
+    "form_code_placeholder": "OCP",
+    "form_name_placeholder": "项目名称",
+    "form_desc_placeholder": "可选",
+    "detail": {
+      "info": "项目信息",
+      "description": "描述",
+      "no_description": "暂无描述",
+      "tasks_list": "任务列表",
+      "no_tasks": "该项目暂无任务"
+    }
+  },
+  "tasks": {
+    "eyebrow": "任务管理",
+    "title": "任务列表",
+    "subtitle": "查看和管理所有项目任务",
+    "new_task": "+ 新建任务",
+    "title_col": "标题",
+    "project": "项目",
+    "status": "状态",
+    "priority": "优先级",
+    "owner": "负责人",
+    "no_tasks": "暂无匹配的任务",
+    "all_projects": "所有项目",
+    "all_status": "所有状态",
+    "all_priority": "所有优先级",
+    "form_title": "新建任务",
+    "form_edit_title": "编辑任务",
+    "detail": {
+      "info": "任务信息",
+      "description": "描述",
+      "no_description": "暂无描述",
+      "status_history": "状态历史",
+      "no_history": "暂无状态变更记录",
+      "category": "分类",
+      "phase": "阶段",
+      "risk": "风险等级",
+      "doc_sync_risk": "文档同步风险"
+    }
+  },
+  "kanban": {
+    "eyebrow": "看板",
+    "title": "看板视图",
+    "subtitle": "拖拽任务卡片以更新状态",
+    "planned": "计划中",
+    "in_progress": "进行中",
+    "review": "审核中",
+    "blocked": "已阻塞",
+    "done": "已完成",
+    "no_tasks": "无任务"
+  },
+  "theme": {
+    "label": "主题",
+    "dark": "深色",
+    "light": "浅色",
+    "cyberpunk": "赛博朋克",
+    "forest": "森林",
+    "ocean": "海洋"
+  },
+  "language": {
+    "label": "语言",
+    "zh": "中文",
+    "en": "English"
+  }
+}
