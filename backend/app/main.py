@@ -18,6 +18,9 @@ from app.api.services import router as services_router
 from app.api.skills import router as skills_router
 from app.api.memory import router as memory_router
 from app.api.usage import router as usage_router
+from app.api.security import router as security_router
+from app.api.extensions import router as extensions_router
+from app.api.communication import router as communication_router
 
 
 @asynccontextmanager
@@ -50,6 +53,9 @@ app.include_router(services_router)
 app.include_router(skills_router)
 app.include_router(memory_router)
 app.include_router(usage_router)
+app.include_router(security_router)
+app.include_router(extensions_router)
+app.include_router(communication_router)
 app.add_middleware(ApiKeyMiddleware)
 
 

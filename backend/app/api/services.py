@@ -1,10 +1,14 @@
-"""Phase 5: Services management API — Gateway status, health, config, backups."""
+"""Phase 5: Services management API — Gateway status, health, config, backups, diff, history."""
 
-import json, shutil, os, subprocess, time
+import json, shutil, os, subprocess, time, uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from sqlalchemy import String, Text
+from sqlalchemy.orm import Session, Mapped, mapped_column
+
+from app.db import SessionLocal, Base, engine
 
 router = APIRouter(prefix="/api/services")
 
@@ -224,3 +228,66 @@ def restore_config(backup_id: str):
         shutil.copy2(CONFIG_PATH, BACKUP_DIR / f"config-pre-restore-{ts}.json")
     shutil.copy2(src, CONFIG_PATH)
     return {"ok": True, "message": f"Restored from {backup_id}"}
+
+
+# ── Config History ──
+
+class ConfigHistory(Base):
+    __tablename__ = "config_history"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    old_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    new_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    changed_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, nullable=False)
+
+ConfigHistory.__table__.create(bind=engine, checkfirst=True)
+
+
+def _get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def _record_config_change(db: Session, old_val: str | None, new_val: str | None, changed_by: str = "api"):
+    entry = ConfigHistory(
+        id=uuid.uuid4().hex[:12],
+        old_value=old_val, new_value=new_val, changed_by=changed_by,
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
+    db.add(entry)
+    db.commit()
+
+
+@router.get("/config/diff")
+def get_config_diff(db: Session = Depends(_get_db)):
+    """Compare current config with last saved snapshot in history."""
+    current = json.loads(CONFIG_PATH.read_text()) if CONFIG_PATH.exists() else {}
+    last = db.query(ConfigHistory).order_by(ConfigHistory.created_at.desc()).first()
+    if not last:
+        return {"has_diff": False, "diffs": [], "message": "No previous config in history"}
+    try:
+        previous = json.loads(last.new_value) if last.new_value else {}
+    except Exception:
+        previous = {}
+    diffs = []
+    all_keys = set(list(previous.keys()) + list(current.keys()))
+    for key in sorted(all_keys):
+        old_v = previous.get(key)
+        new_v = current.get(key)
+        if old_v != new_v:
+            diffs.append({"key": key, "old_value": old_v, "new_value": new_v})
+    return {"has_diff": bool(diffs), "diffs": diffs}
+
+
+@router.get("/config/history")
+def get_config_history(db: Session = Depends(_get_db), limit: int = Query(20, le=100)):
+    entries = db.query(ConfigHistory).order_by(ConfigHistory.created_at.desc()).limit(limit).all()
+    return {"history": [
+        {"id": e.id, "changed_by": e.changed_by, "created_at": e.created_at,
+         "old_value_preview": e.old_value[:200] if e.old_value else None,
+         "new_value_preview": e.new_value[:200] if e.new_value else None}
+        for e in entries
+    ]}

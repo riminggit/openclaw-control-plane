@@ -20,6 +20,9 @@ import { ServicesPage } from './pages/ServicesPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MemoryPage } from './pages/MemoryPage'
 import { UsagePage } from './pages/UsagePage'
+import { SecurityPage } from './pages/SecurityPage'
+import { ExtensionsPage } from './pages/ExtensionsPage'
+import { CommunicationPage } from './pages/CommunicationPage'
 import { ThemeProvider } from './components/ThemeProvider'
 import { GatewayProvider } from './hooks/useGateway'
 
@@ -50,6 +53,9 @@ export default function App() {
               <Route path="skills" element={<SkillsPage />} />
               <Route path="memory" element={<MemoryPage />} />
               <Route path="usage" element={<UsagePage />} />
+              <Route path="security" element={<SecurityPage />} />
+              <Route path="extensions" element={<ExtensionsPage />} />
+              <Route path="communication" element={<CommunicationPage />} />
             </Route>
           </Routes>
         </GatewayProvider>

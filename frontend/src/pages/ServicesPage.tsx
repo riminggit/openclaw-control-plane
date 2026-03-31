@@ -19,6 +19,13 @@ interface ConfigBackup {
   filename: string
 }
 
+interface ConfigHistoryEntry {
+  id: string
+  time: string
+  summary: string
+  user?: string
+}
+
 const API = '/api/services'
 
 export function ServicesPage() {
@@ -28,6 +35,9 @@ export function ServicesPage() {
   const [config, setConfig] = useState('')
   const [originalConfig, setOriginalConfig] = useState('')
   const [backups, setBackups] = useState<ConfigBackup[]>([])
+  const [configHistory, setConfigHistory] = useState<ConfigHistoryEntry[]>([])
+  const [showDiff, setShowDiff] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [confirmAction, setConfirmAction] = useState<string | null>(null)
@@ -57,8 +67,15 @@ export function ServicesPage() {
     } catch { /* ignore */ }
   }, [])
 
+  const fetchConfigHistory = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/config/history`)
+      if (res.ok) setConfigHistory(await res.json())
+    } catch { /* ignore */ }
+  }, [])
+
   useEffect(() => {
-    Promise.all([fetchStatus(), fetchConfig(), fetchBackups()]).finally(() => setLoading(false))
+    Promise.all([fetchStatus(), fetchConfig(), fetchBackups(), fetchConfigHistory()]).finally(() => setLoading(false))
   }, [])
 
   const handleRestart = async () => {
@@ -175,7 +192,64 @@ export function ServicesPage() {
 
       {/* Config Editor */}
       <div className="card" style={{ padding: 'var(--space-4)' }}>
-        <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>{t('services.config_editor', '配置编辑器')}</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+          <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>{t('services.config_editor', '配置编辑器')}</h3>
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button className={`btn ${showDiff ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setShowDiff(!showDiff)} disabled={!hasChanges} style={{ fontSize: 'var(--text-xs)' }}>
+              {t('services.diff_view', 'Diff 视图')}
+            </button>
+            <button className={`btn ${showHistory ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchConfigHistory() }} style={{ fontSize: 'var(--text-xs)' }}>
+              {t('services.config_history', '变更历史')}
+            </button>
+          </div>
+        </div>
+
+        {/* Diff View */}
+        {showDiff && hasChanges && (
+          <div style={{ marginBottom: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', maxHeight: 200, overflow: 'auto' }}>
+            {(() => {
+              const oldLines = originalConfig.split('\n')
+              const newLines = config.split('\n')
+              const maxLen = Math.max(oldLines.length, newLines.length)
+              const lines = []
+              for (let i = 0; i < maxLen; i++) {
+                const o = oldLines[i] ?? ''
+                const n = newLines[i] ?? ''
+                if (o === n) {
+                  lines.push(<div key={i} style={{ color: 'var(--text-muted)' }}><span style={{ color: 'var(--text-muted)', opacity: 0.5, display: 'inline-block', width: 30 }}>{i + 1}</span> {o || ' '}</div>)
+                } else {
+                  if (o) lines.push(<div key={`${i}-old`} style={{ color: 'var(--status-red)', background: 'var(--status-red-bg)' }}><span style={{ display: 'inline-block', width: 30 }}>-</span>{o}</div>)
+                  if (n) lines.push(<div key={`${i}-new`} style={{ color: 'var(--status-green)', background: 'var(--status-green-bg)' }}><span style={{ display: 'inline-block', width: 30 }}>+</span>{n}</div>)
+                }
+              }
+              return lines
+            })()}
+          </div>
+        )}
+
+        {/* Config History */}
+        {showHistory && (
+          <div style={{ marginBottom: 'var(--space-3)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+            <div style={{ padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-surface-hover)', fontSize: 'var(--text-sm)', fontWeight: 500, borderBottom: '1px solid var(--border-default)' }}>
+              {t('services.config_history', '变更历史')}
+            </div>
+            {configHistory.length === 0 ? (
+              <div style={{ padding: 'var(--space-3)', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('services.no_history', '暂无变更记录')}</div>
+            ) : (
+              <div style={{ maxHeight: 200, overflow: 'auto' }}>
+                {configHistory.map(h => (
+                  <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-2) var(--space-3)', borderBottom: '1px solid var(--border-default)' }}>
+                    <div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>{h.summary}</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{h.time}{h.user ? ` · ${h.user}` : ''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <textarea
           value={config}
           onChange={e => setConfig(e.target.value)}
