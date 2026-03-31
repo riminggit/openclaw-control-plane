@@ -69,7 +69,7 @@ export function TasksPage() {
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="filter-select">
             <option value="">{t('tasks.all_status')}</option>
             {['planned', 'in_progress', 'review', 'blocked', 'done'].map(s => (
-              <option key={s} value={s}>{s.replace('_', ' ')}</option>
+              <option key={s} value={s}>{t(`status.${s}`, s.replace('_', ' '))}</option>
             ))}
           </select>
           <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="filter-select">
@@ -145,8 +145,8 @@ export function TasksPage() {
                     <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>{i + 1}</td>
                     <td><a href={`/tasks/${task.id}`} className="task-title-cell" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{task.title}</a></td>
                     <td><a href={`/projects/${task.projectId}`} className="mono" style={{ color: 'var(--text-secondary)' }}>{task.projectId}</a></td>
-                    <td><span className={`badge badge-${task.status}`}>{task.status.replace('_', ' ')}</span></td>
-                    <td><span className={`badge badge-priority-${task.priority}`}>{task.priority}</span></td>
+                    <td><span className={`badge badge-${task.status}`}>{String(t(`status.${task.status}`, task.status.replace('_', ' ')))}</span></td>
+                    <td><span className={`badge badge-priority-${task.priority}`}>{String(t(`priority.${task.priority}`, task.priority))}</span></td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>{task.ownerRole || '-'}</td>
                     <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>{new Date(task.updatedAt).toLocaleString()}</td>
                     <td>
