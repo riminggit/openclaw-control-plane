@@ -8,6 +8,9 @@ import { ChatPage } from './pages/ChatPage'
 import { GatewaySettingsPage } from './pages/GatewaySettingsPage'
 import { KanbanPage } from './pages/KanbanPage'
 import { TasksPage } from './pages/TasksPage'
+import { TaskDetailPage } from './pages/TaskDetailPage'
+import { ProjectsPage } from './pages/ProjectsPage'
+import { ProjectDetailPage } from './pages/ProjectDetailPage'
 import { ThemeProvider } from './components/ThemeProvider'
 import { GatewayProvider } from './hooks/useGateway'
 
@@ -26,6 +29,9 @@ export default function App() {
               <Route path="settings" element={<GatewaySettingsPage />} />
               <Route path="kanban" element={<KanbanPage />} />
               <Route path="tasks" element={<TasksPage />} />
+              <Route path="tasks/:id" element={<TaskDetailPage />} />
+              <Route path="projects" element={<ProjectsPage />} />
+              <Route path="projects/:id" element={<ProjectDetailPage />} />
             </Route>
           </Routes>
         </GatewayProvider>
