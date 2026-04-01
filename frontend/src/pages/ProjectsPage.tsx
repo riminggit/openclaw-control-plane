@@ -49,11 +49,11 @@ export function ProjectsPage() {
     : projects
 
   return (
-    <div>
+    <div className="page-container">
       <div className="page-header">
-        <p className="page-header-eyebrow">{t('projects.eyebrow')}</p>
-        <h1>{t('projects.title')}</h1>
-        <p className="page-header-desc">{t('projects.subtitle')}</p>
+        <div className="page-eyebrow">{t('projects.eyebrow')}</div>
+        <h1 className="page-title">{t('projects.title')}</h1>
+        <p className="page-subtitle">{t('projects.subtitle')}</p>
         <div className="page-header-actions">
           <div className="search-box" style={{ width: 240 }}>
             <svg className="search-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

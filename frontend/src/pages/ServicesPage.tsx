@@ -143,14 +143,15 @@ export function ServicesPage() {
   if (loading) return <div className="skeleton" style={{ height: 200 }} />
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       {confirmAction === 'restart' && <ConfirmDialog action="restart" onConfirm={handleRestart} msg={t('services.confirm_restart', '确定要重启 Gateway 吗？所有会话将被中断。')} />}
       {confirmAction?.startsWith('restore:') && <ConfirmDialog action="restore" onConfirm={() => handleRestore(confirmAction.split(':')[1])} msg={t('services.confirm_restore', '确定要恢复此备份吗？当前配置将被覆盖。')} />}
 
       {/* Header */}
-      <div>
-        <p className="eyebrow">{t('services.eyebrow', '服务管理')}</p>
-        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 600 }}>{t('services.title', '服务管理')}</h1>
+      <div className="page-header">
+        <div className="page-eyebrow">{t('services.eyebrow', '服务管理')}</div>
+        <h1 className="page-title">{t('services.title', '服务管理')}</h1>
+        <p className="page-subtitle">{t('services.subtitle', 'Gateway 配置与系统资源监控')}</p>
       </div>
 
       {/* Status Cards */}

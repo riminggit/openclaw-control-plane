@@ -107,10 +107,11 @@ export function SecurityPage() {
   if (loading) return <div className="skeleton" style={{ height: 200 }} />
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      <div>
-        <p className="eyebrow">{t('security.eyebrow')}</p>
-        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 600 }}>{t('security.title')}</h1>
+    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      <div className="page-header">
+        <div className="page-eyebrow">{t('security.eyebrow')}</div>
+        <h1 className="page-title">{t('security.title')}</h1>
+        <p className="page-subtitle">{t('security.subtitle', '系统安全设置与审计')}</p>
       </div>
 
       {/* Overview Cards */}

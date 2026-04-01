@@ -27,11 +27,11 @@ export function GatewaySettingsPage() {
   }
 
   return (
-    <div>
+    <div className="page-container">
       <div className="page-header">
-        <p className="page-header-eyebrow">{t('gateway.eyebrow')}</p>
-        <h1>{t('gateway.title')}</h1>
-        <p className="page-header-desc">{t('gateway.subtitle')}</p>
+        <div className="page-eyebrow">{t('gateway.eyebrow')}</div>
+        <h1 className="page-title">{t('gateway.title')}</h1>
+        <p className="page-subtitle">{t('gateway.subtitle')}</p>
       </div>
 
       <div style={{ maxWidth: 600 }}>
