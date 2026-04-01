@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+import httpx
 
 from app.db import get_db, AgentTokenSnapshot, DailyCostSummary, BudgetAlert
 
@@ -226,3 +227,159 @@ def ingest_snapshot(body: dict, db: Session = Depends(get_db)):
         db.add(summary)
     db.commit()
     return {"status": "ok", "cost_usd": round(cost, 6)}
+
+
+# ── Gateway sync endpoints ──
+
+GATEWAY_URL = "http://localhost:8000/api/gateway/sessions"
+
+
+@router.post("/sync")
+def sync_from_gateway(db: Session = Depends(get_db)):
+    """从 Gateway 采集 token 数据并写入数据库"""
+    try:
+        with httpx.Client() as client:
+            resp = client.get(GATEWAY_URL, timeout=10)
+            data = resp.json()
+    except Exception as e:
+        return {"ok": False, "error": f"Gateway unreachable: {str(e)}"}
+
+    sessions = data.get("sessions", [])
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+
+    count = 0
+
+    for s in sessions:
+        agent_id = s.get("key", "").split(":")[1] if ":" in s.get("key", "") else s.get("key", "unknown")
+        total_tokens = s.get("totalTokens", 0) or 0
+        input_tokens = s.get("inputTokens", 0) or 0
+        output_tokens = s.get("outputTokens", 0) or 0
+        cost_usd = s.get("estimatedCostUsd", 0) or 0
+        model = s.get("model", "unknown")
+        session_key = s.get("key", "")
+
+        if total_tokens <= 0:
+            continue
+
+        # 写入 AgentTokenSnapshot（保留每个 session 的快照）
+        snapshot = AgentTokenSnapshot(
+            id=str(uuid.uuid4()),
+            agent_id=agent_id,
+            session_key=session_key,
+            model=model,
+            total_tokens=total_tokens,
+            total_input_tokens=input_tokens,
+            total_output_tokens=output_tokens,
+            estimated_cost_usd=cost_usd,
+            sampled_at=now.isoformat(),
+        )
+        db.add(snapshot)
+
+        # 写入/更新 DailyCostSummary
+        existing = db.query(DailyCostSummary).filter(
+            DailyCostSummary.agent_id == agent_id,
+            DailyCostSummary.date == today,
+        ).first()
+
+        if existing:
+            existing.total_tokens += total_tokens
+            existing.estimated_cost_usd += cost_usd
+        else:
+            summary = DailyCostSummary(
+                id=str(uuid.uuid4()),
+                agent_id=agent_id,
+                date=today,
+                total_tokens=total_tokens,
+                estimated_cost_usd=cost_usd,
+            )
+            db.add(summary)
+
+        count += 1
+
+    db.commit()
+
+    # 同时把历史数据也补全（用 sessions 的 startedAt 来回填）
+    historical_count = 0
+    for s in sessions:
+        agent_id = s.get("key", "").split(":")[1] if ":" in s.get("key", "") else s.get("key", "unknown")
+        total_tokens = s.get("totalTokens", 0) or 0
+        cost_usd = s.get("estimatedCostUsd", 0) or 0
+
+        started_at_str = s.get("startedAt")
+        if not started_at_str:
+            continue
+
+        try:
+            started_at = datetime.fromtimestamp(started_at_str / 1000, tz=timezone.utc) if isinstance(started_at_str, (int, float)) else None
+            if not started_at:
+                continue
+
+            session_date = started_at.strftime("%Y-%m-%d")
+            if session_date == today:
+                continue  # 今天的已经处理了
+
+            existing = db.query(DailyCostSummary).filter(
+                DailyCostSummary.agent_id == agent_id,
+                DailyCostSummary.date == session_date,
+            ).first()
+
+            if existing:
+                existing.total_tokens += total_tokens
+                existing.estimated_cost_usd += cost_usd
+            else:
+                summary = DailyCostSummary(
+                    id=str(uuid.uuid4()),
+                    agent_id=agent_id,
+                    date=session_date,
+                    total_tokens=total_tokens,
+                    estimated_cost_usd=cost_usd,
+                )
+                db.add(summary)
+            historical_count += 1
+        except Exception:
+            continue
+
+    db.commit()
+
+    return {"ok": True, "synced_sessions": count, "historical_records": historical_count}
+
+
+@router.get("/realtime")
+def realtime_cost():
+    """从 Gateway 实时获取 token 消耗（不写数据库）"""
+    try:
+        with httpx.Client() as client:
+            resp = client.get(GATEWAY_URL, timeout=10)
+            data = resp.json()
+    except Exception as e:
+        return {"error": f"Gateway unreachable: {str(e)}"}
+
+    sessions = data.get("sessions", [])
+
+    total_tokens = sum(s.get("totalTokens", 0) or 0 for s in sessions)
+    total_cost = sum(s.get("estimatedCostUsd", 0) or 0 for s in sessions)
+
+    active = [s for s in sessions if s.get("status") == "running"]
+    active_tokens = sum(s.get("totalTokens", 0) or 0 for s in active)
+    active_cost = sum(s.get("estimatedCostUsd", 0) or 0 for s in active)
+
+    by_agent = {}
+    for s in sessions:
+        if s.get("totalTokens", 0) or 0 <= 0:
+            continue
+        agent_id = s.get("key", "").split(":")[1] if ":" in s.get("key", "") else s.get("key", "unknown")
+        if agent_id not in by_agent:
+            by_agent[agent_id] = {"total_tokens": 0, "estimated_cost_usd": 0, "sessions": 0}
+        by_agent[agent_id]["total_tokens"] += s.get("totalTokens", 0) or 0
+        by_agent[agent_id]["estimated_cost_usd"] += s.get("estimatedCostUsd", 0) or 0
+        by_agent[agent_id]["sessions"] += 1
+
+    return {
+        "total_tokens": total_tokens,
+        "total_cost_usd": total_cost,
+        "active_sessions": len(active),
+        "active_tokens": active_tokens,
+        "active_cost_usd": active_cost,
+        "by_agent": by_agent,
+    }

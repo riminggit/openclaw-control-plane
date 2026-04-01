@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { apiGet, apiPost, apiPatch } from '../api/client'
-import { Button, Input, Select, Card, InputNumber, Form, Table, Empty, Tag, Progress, Statistic, Row, Col, Typography } from 'antd'
-import { DollarOutlined, ClockCircleOutlined, CalendarOutlined, FieldTimeOutlined, ThunderboltOutlined, WalletOutlined, AlertOutlined } from '@ant-design/icons'
+import { Button, Input, Select, Card, InputNumber, Form, Table, Empty, Tag, Progress, Statistic, Row, Col, Typography, message, Spin } from 'antd'
+import { DollarOutlined, ClockCircleOutlined, CalendarOutlined, FieldTimeOutlined, ThunderboltOutlined, WalletOutlined, AlertOutlined, SyncOutlined, ReloadOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -11,6 +11,7 @@ interface CostSummary { today: { tokens: number; cost_usd: number }; week: { tok
 interface TrendPoint { date: string; total_tokens: number; estimated_cost_usd: number }
 interface AgentCost { agent_id: string; total_tokens: number; estimated_cost_usd: number }
 interface Budget { id: string; name: string; budget_type: string; budget_limit_usd: number; current_usage_usd: number; alert_threshold_pct: number; is_active: boolean; usage_pct: number }
+interface RealtimeData { total_tokens: number; total_cost_usd: number; active_sessions: number; active_tokens: number; active_cost_usd: number; by_agent: Record<string, { total_tokens: number; estimated_cost_usd: number; sessions: number }> }
 
 export function AnalyticsPage() {
   const { t } = useTranslation()
@@ -18,14 +19,54 @@ export function AnalyticsPage() {
   const [trend, setTrend] = useState<TrendPoint[]>([])
   const [agents, setAgents] = useState<AgentCost[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
+  const [realtimeData, setRealtimeData] = useState<RealtimeData | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [loadingRealtime, setLoadingRealtime] = useState(false)
   const [form] = Form.useForm()
 
   useEffect(() => {
+    // 优先获取实时数据
+    fetchRealtimeData()
+    // 同时获取历史数据
     apiGet<CostSummary>('/analytics/cost/summary').then(setSummary).catch(() => {})
     apiGet<TrendPoint[]>('/analytics/cost/trend?period_days=30').then(setTrend).catch(() => {})
     apiGet<AgentCost[]>('/analytics/cost/by-agent?period_days=7').then(setAgents).catch(() => {})
     apiGet<Budget[]>('/analytics/cost/budget').then(setBudgets).catch(() => {})
   }, [])
+
+  const fetchRealtimeData = async () => {
+    setLoadingRealtime(true)
+    try {
+      const data = await apiGet<RealtimeData>('/analytics/cost/realtime')
+      setRealtimeData(data)
+    } catch (e) {
+      console.error('Failed to fetch realtime data:', e)
+    } finally {
+      setLoadingRealtime(false)
+    }
+  }
+
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      const result = await apiPost<{ ok: boolean; synced_sessions?: number; historical_records?: number; error?: string }>('/analytics/cost/sync', {})
+      if (result.ok) {
+        message.success(`同步成功: ${result.synced_sessions || 0} 个会话, ${result.historical_records || 0} 条历史记录`)
+        // 刷新数据
+        fetchRealtimeData()
+        apiGet<CostSummary>('/analytics/cost/summary').then(setSummary).catch(() => {})
+        apiGet<TrendPoint[]>('/analytics/cost/trend?period_days=30').then(setTrend).catch(() => {})
+        apiGet<AgentCost[]>('/analytics/cost/by-agent?period_days=7').then(setAgents).catch(() => {})
+      } else {
+        message.error(`同步失败: ${result.error || '未知错误'}`)
+      }
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : '未知错误'
+      message.error(`同步失败: ${errorMessage}`)
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const createBudget = async (values: { name: string; budget_type: string; budget_limit_usd: number; alert_threshold_pct: number }) => {
     await apiPost('/analytics/cost/budget', values)
@@ -82,9 +123,64 @@ export function AnalyticsPage() {
           <h1 className="page-title">{t('analytics.title')}</h1>
           <p className="page-subtitle">{t('analytics.subtitle')}</p>
         </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button icon={<ReloadOutlined />} onClick={fetchRealtimeData} loading={loadingRealtime}>
+            刷新实时数据
+          </Button>
+          <Button type="primary" icon={<SyncOutlined />} onClick={handleSync} loading={syncing}>
+            同步数据
+          </Button>
+        </div>
       </div>
 
-      {/* Cost Summary Cards */}
+      {/* Realtime Data Card */}
+      <Card
+        style={{ borderTop: '3px solid var(--accent)' }}
+        title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ThunderboltOutlined />实时数据</span>}
+      >
+        {loadingRealtime ? (
+          <Spin />
+        ) : realtimeData ? (
+          <Row gutter={[16, 16]}>
+            <Col xs={12} sm={6}>
+              <Statistic
+                title="总 Tokens"
+                value={realtimeData.total_tokens}
+                valueStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <Statistic
+                title="总成本 (USD)"
+                value={realtimeData.total_cost_usd}
+                precision={4}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: 'var(--accent)', fontWeight: 700 }}
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <Statistic
+                title="活跃会话"
+                value={realtimeData.active_sessions}
+                valueStyle={{ color: 'var(--status-blue)', fontWeight: 700 }}
+              />
+            </Col>
+            <Col xs={12} sm={6}>
+              <Statistic
+                title="活跃成本 (USD)"
+                value={realtimeData.active_cost_usd}
+                precision={4}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: 'var(--status-green)', fontWeight: 700 }}
+              />
+            </Col>
+          </Row>
+        ) : (
+          <Empty description="无法获取实时数据" />
+        )}
+      </Card>
+
+      {/* Cost Summary Cards (Historical) */}
       <Row gutter={[16, 16]}>
         {summaryCards.map(card => {
           const data = summary?.[card.key as keyof CostSummary]
@@ -142,22 +238,27 @@ export function AnalyticsPage() {
         )}
       </Card>
 
-      {/* Agent Ranking */}
+      {/* Agent Ranking (Realtime) */}
       <Card
-        title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><AlertOutlined />{t('analytics.agentRanking')}</span>}
+        title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><AlertOutlined />Agent 成本排行 (实时)</span>}
       >
-        {agents.length === 0 ? (
-          <Empty description={t('analytics.noData')} style={{ padding: '40px 0' }} />
-        ) : (
-          <ResponsiveContainer width="100%" height={Math.max(200, agents.length * 36)}>
-            <BarChart data={agents} layout="vertical">
+        {realtimeData && Object.keys(realtimeData.by_agent).length > 0 ? (
+          <ResponsiveContainer width="100%" height={Math.max(200, Object.keys(realtimeData.by_agent).length * 36)}>
+            <BarChart
+              data={Object.entries(realtimeData.by_agent)
+                .map(([agent_id, data]) => ({ agent_id, ...data }))
+                .sort((a, b) => b.estimated_cost_usd - a.estimated_cost_usd)}
+              layout="vertical"
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
               <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--text-muted)" />
               <YAxis type="category" dataKey="agent_id" width={140} tick={{ fontSize: 11 }} stroke="var(--text-muted)" />
               <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 8 }} />
-              <Bar dataKey="estimated_cost_usd" fill="var(--accent)" name={t('analytics.cost_usd')} />
+              <Bar dataKey="estimated_cost_usd" fill="var(--accent)" name="Cost (USD)" />
             </BarChart>
           </ResponsiveContainer>
+        ) : (
+          <Empty description={t('analytics.noData')} style={{ padding: '40px 0' }} />
         )}
       </Card>
 
