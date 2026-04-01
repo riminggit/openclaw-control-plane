@@ -244,6 +244,41 @@ def update_task(task_id: str, body: UpdateTaskRequest, db: Session = Depends(get
     return _task_to_item(t, db.query(Project).filter(Project.id == t.project_id).first())
 
 
+@router.patch("/tasks/{task_id}", response_model=TaskItem)
+def patch_task(task_id: str, body: dict, db: Session = Depends(get_db)):
+    """Partial update a task (e.g. change status only)."""
+    t = db.query(Task).filter(Task.id == task_id).first()
+    if not t:
+        raise HTTPException(404, "Task not found")
+    for field, value in body.items():
+        if hasattr(t, field):
+            setattr(t, field, value)
+    t.updated_at = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    db.refresh(t)
+    return _task_to_item(t, db.query(Project).filter(Project.id == t.project_id).first())
+
+
+@router.post("/tasks/{task_id}/transition")
+def transition_task(task_id: str, body: dict, db: Session = Depends(get_db)):
+    """Transition task status (for Kanban drag-and-drop)."""
+    t = db.query(Task).filter(Task.id == task_id).first()
+    if not t:
+        raise HTTPException(404, "Task not found")
+    new_status = body.get("status") or body.get("new_status")
+    if not new_status:
+        raise HTTPException(400, "Missing 'status' field")
+    valid = ["planned", "approved", "in_progress", "review", "blocked", "completed", "cancelled", "stopped"]
+    if new_status not in valid:
+        raise HTTPException(400, f"Invalid status. Must be one of: {valid}")
+    old_status = t.status
+    t.status = new_status
+    t.updated_at = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    db.refresh(t)
+    return _task_to_item(t, db.query(Project).filter(Project.id == t.project_id).first())
+
+
 @router.delete("/tasks/{task_id}", status_code=204)
 def delete_task(task_id: str, db: Session = Depends(get_db)):
     t = db.query(Task).filter(Task.id == task_id).first()

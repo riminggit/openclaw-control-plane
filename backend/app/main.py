@@ -61,7 +61,9 @@ app.include_router(gateway_rest_router)
 app.include_router(communication_router)
 app.include_router(agent_skills_router)
 from app.api.workflow.templates import router as workflow_router
+from app.api.workflow.ops import router as workflow_ops_router
 app.include_router(workflow_router)
+app.include_router(workflow_ops_router)
 from app.api.thoughts import router as thoughts_router
 app.include_router(thoughts_router)
 from app.api.progress import router as progress_router
