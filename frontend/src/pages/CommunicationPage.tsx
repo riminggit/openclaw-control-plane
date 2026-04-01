@@ -151,15 +151,19 @@ export function CommunicationPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      <div>
-        <p className="eyebrow">{t('comm.eyebrow')}</p>
-        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 600 }}>{t('comm.title')}</h1>
+      {/* Page Header */}
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">{t('comm.eyebrow')}</div>
+          <h1 className="page-title">{t('comm.title')}</h1>
+          <p className="page-subtitle">{t('comm.subtitle', '管理消息通讯和Webhook')}</p>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 'var(--space-1)', borderBottom: '1px solid var(--border-default)', paddingBottom: 'var(--space-2)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
         {tabs.map(tab => (
-          <Button key={tab.key} className={`btn ${activeTab === tab.key ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab(tab.key)} style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0' }}>
+          <Button key={tab.key} type={activeTab === tab.key ? 'primary' : 'default'} onClick={() => setActiveTab(tab.key)}>
             {tab.label}
           </Button>
         ))}

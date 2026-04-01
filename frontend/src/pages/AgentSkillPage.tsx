@@ -557,8 +557,12 @@ export function AgentSkillPage() {
   ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ marginBottom: 24 }}>Agent-Skill Management</h1>
+    <div>
+      <div className="page-header">
+        <p className="page-header-eyebrow">Agent Management</p>
+        <h1>Agent-Skill Management</h1>
+        <p className="page-header-desc">Manage agent capabilities and skill assignments</p>
+      </div>
       
       {/* Statistics */}
       <Row gutter={16} style={{ marginBottom: 24 }}>

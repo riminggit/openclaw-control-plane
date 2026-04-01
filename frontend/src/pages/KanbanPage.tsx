@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult, type DragStart } from '@hello-pangea/dnd'
 import { tasksApi, type TaskItem } from '../api/modules/tasks'
 import { apiPost } from '../api/client'
 import { gatewayClient } from '../lib/gateway-client'
 import { useConnectionState } from '../hooks/useGateway'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Checkbox, Popconfirm, message, Modal, Form, Select, Progress, Spin } from 'antd'
-import { CaretRightOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { Button, Input, Checkbox, Popconfirm, message, Modal, Form, Select, Progress, Spin, Dropdown, Menu } from 'antd'
+import { CaretRightOutlined, ClockCircleOutlined, MoreOutlined, CheckOutlined, SendOutlined, PauseOutlined, PlayCircleOutlined } from '@ant-design/icons'
 
 // ── Types ──
 
@@ -31,15 +32,15 @@ interface RunningTask {
   elapsed: string
 }
 
-type TaskStatus = 'planned' | 'running' | 'in_progress' | 'review' | 'blocked' | 'done'
+type TaskStatus = 'planned' | 'approved' | 'in_progress' | 'review' | 'stopped' | 'completed'
 
 const TASK_COLUMNS: { id: TaskStatus; color: string }[] = [
   { id: 'planned', color: 'var(--text-muted)' },
-  { id: 'running', color: 'var(--status-blue)' },
+  { id: 'approved', color: 'var(--status-blue)' },
   { id: 'in_progress', color: 'var(--status-blue)' },
   { id: 'review', color: 'var(--status-yellow)' },
-  { id: 'blocked', color: 'var(--status-red)' },
-  { id: 'done', color: 'var(--status-green)' },
+  { id: 'stopped', color: 'var(--status-red)' },
+  { id: 'completed', color: 'var(--status-green)' },
 ]
 
 // ── Toast ──
@@ -76,20 +77,54 @@ function useElapsedTime(startedAt: number): string {
 
 // ── Task Card ──
 
-function TaskCard({ task, onDelete, selected, onToggleSelect, isDragging, onExecute, isExecuting, selectMode }: {
+function TaskCard({ task, onDelete, selected, onToggleSelect, isDragging, onExecute, isExecuting, selectMode, onAction, onClick }: {
   task: TaskItem; onDelete: (id: string) => void; selected: boolean; onToggleSelect: () => void; isDragging: boolean
   onExecute?: () => void; isExecuting?: boolean; selectMode?: boolean
+  onAction?: (action: 'approve' | 'dispatch' | 'stop' | 'resume' | 'complete') => void
+  onClick?: () => void
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const priorityColor: Record<string, string> = { high: 'var(--status-red)', medium: 'var(--status-yellow)', low: 'var(--status-green)' }
+
+  const currentStatus = task.status?.toLowerCase().replace(/[\s_-]/g, '_')
+
+  // Build action menu based on status
+  const actionMenuItems: any[] = []
+  if (currentStatus === 'planned') {
+    actionMenuItems.push({ key: 'approve', icon: <CheckOutlined />, label: t('kanban.approve', '审批') })
+  }
+  if (currentStatus === 'approved' || currentStatus === 'stopped') {
+    actionMenuItems.push({ key: 'dispatch', icon: <SendOutlined />, label: t('kanban.dispatch', '分派') })
+  }
+  if (currentStatus === 'in_progress' || currentStatus === 'dispatched') {
+    actionMenuItems.push({ key: 'stop', icon: <PauseOutlined />, label: t('kanban.stop', '停止') })
+    actionMenuItems.push({ key: 'complete', icon: <CheckOutlined />, label: t('kanban.complete', '完成') })
+  }
+  if (currentStatus === 'stopped') {
+    actionMenuItems.push({ key: 'resume', icon: <PlayCircleOutlined />, label: t('kanban.resume', '恢复') })
+  }
+  actionMenuItems.push({ key: 'details', icon: <MoreOutlined />, label: t('kanban.details', '详情') })
+
+  const handleAction = (key: string) => {
+    if (key === 'details') {
+      navigate(`/tasks/${task.id}`)
+    } else if (onAction) {
+      onAction(key as any)
+    }
+  }
+
   return (
-    <div style={{
-      background: selected ? 'var(--accent-bg, rgba(59,130,246,0.08))' : 'var(--bg-surface)',
-      border: '1px solid var(--border-color)', borderLeft: `3px solid ${priorityColor[task.priority] || 'var(--text-muted)'}`,
-      borderRadius: 'var(--radius-lg)', padding: 'var(--space-3)', marginBottom: 'var(--space-2)',
-      opacity: isDragging ? 0.85 : 1, boxShadow: isDragging ? 'var(--shadow-lg)' : undefined,
-      cursor: 'grab',
-    }}>
+    <div
+      style={{
+        background: selected ? 'var(--accent-bg, rgba(59,130,246,0.08))' : 'var(--bg-surface)',
+        border: '1px solid var(--border-color)', borderLeft: `3px solid ${priorityColor[task.priority] || 'var(--text-muted)'}`,
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-3)', marginBottom: 'var(--space-2)',
+        opacity: isDragging ? 0.85 : 1, boxShadow: isDragging ? 'var(--shadow-lg)' : undefined,
+        cursor: 'pointer',
+      }}
+      onClick={onClick}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         {selectMode && (
           <Checkbox checked={selected} onClick={e => { e.stopPropagation(); onToggleSelect() }} style={{ marginTop: 2 }} />
@@ -98,7 +133,7 @@ function TaskCard({ task, onDelete, selected, onToggleSelect, isDragging, onExec
           {task.title}
         </span>
         <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          {onExecute && task.status !== 'done' && (
+          {onExecute && currentStatus !== 'completed' && (
             <Button
               type="text"
               size="small"
@@ -108,6 +143,9 @@ function TaskCard({ task, onDelete, selected, onToggleSelect, isDragging, onExec
               title={t('kanban.execute', '执行')}
             />
           )}
+          <Dropdown menu={{ items: actionMenuItems, onClick: (e) => { e.domEvent.stopPropagation(); handleAction(e.key) } }} trigger={['click']}>
+            <Button type="text" size="small" icon={<MoreOutlined />} onClick={e => e.stopPropagation()} style={{ minWidth: 24, padding: '0 4px', fontSize: 12 }} />
+          </Dropdown>
           <Popconfirm title={t('app.confirm_delete', '确定删除此任务？')} onConfirm={e => { e?.stopPropagation(); onDelete(task.id) }} okText={t('app.delete')} cancelText={t('app.cancel')}>
             <Button type="text" danger size="small" onClick={e => e.stopPropagation()} style={{ minWidth: 24, padding: '0 4px', fontSize: 12 }}>✕</Button>
           </Popconfirm>
@@ -136,7 +174,7 @@ function TaskCard({ task, onDelete, selected, onToggleSelect, isDragging, onExec
 
 // ── Running Task Card ──
 
-function RunningTaskCard({ rt }: { rt: RunningTask }) {
+function RunningTaskCard({ rt, onStop }: { rt: RunningTask; onStop?: () => void }) {
   const { t } = useTranslation()
   const elapsed = useElapsedTime(rt.startedAt)
   return (
@@ -152,6 +190,16 @@ function RunningTaskCard({ rt }: { rt: RunningTask }) {
         {rt.status === 'running' && <Spin size="small" />}
         {rt.status === 'completed' && <span style={{ color: 'var(--status-green)', fontSize: 12 }}>✓</span>}
         {rt.status === 'error' && <span style={{ color: 'var(--status-red)', fontSize: 12 }}>✕</span>}
+        {rt.status === 'running' && onStop && (
+          <Button
+            type="text"
+            size="small"
+            icon={<PauseOutlined />}
+            onClick={onStop}
+            style={{ minWidth: 24, padding: '0 4px', fontSize: 12, color: 'var(--status-red)' }}
+            title={t('kanban.stop', '停止')}
+          />
+        )}
       </div>
       <Progress percent={rt.progress} size="small" strokeColor={rt.status === 'error' ? 'var(--status-red)' : undefined} />
       {rt.step && (
@@ -257,6 +305,7 @@ function ColumnHeader({ col, count, allSelected, someSelected, onSelectAll, sele
 
 export function KanbanPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const connState = useConnectionState()
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [crons, setCrons] = useState<CronJob[]>([])
@@ -276,7 +325,15 @@ export function KanbanPage() {
   const runningRef = useRef<RunningTask[]>([])
 
   // ── Status matching ──
-  const statusMatch = (s: string) => s?.toLowerCase().replace(/[\s_-]/g, '_')
+  const statusMatch = (s: string): TaskStatus => {
+    const norm = s?.toLowerCase().replace(/[\s_-]/g, '_')
+    if (norm === 'dispatched') return 'in_progress'
+    if (norm === 'review_pending') return 'review'
+    if (norm === 'done') return 'completed'
+    if (norm === 'blocked') return 'stopped'
+    if (norm === 'running') return 'in_progress'
+    return norm as TaskStatus
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -440,6 +497,33 @@ export function KanbanPage() {
     } catch { message.error(t('app.error')) }
   }
 
+  const handleTaskAction = async (task: TaskItem, action: 'approve' | 'dispatch' | 'stop' | 'resume' | 'complete') => {
+    try {
+      const currentStatus = statusMatch(task.status)
+
+      if (action === 'approve' && currentStatus === 'planned') {
+        await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'approve' })
+        message.success(t('kanban.approved', '已审批'))
+      } else if (action === 'dispatch' && (currentStatus === 'approved' || currentStatus === 'stopped')) {
+        await apiPost(`/workflow/tasks/${task.id}/dispatch`, { target_agent_id: task.ownerRole || 'main' })
+        message.success(t('kanban.dispatched', '已分派'))
+      } else if (action === 'stop' && currentStatus === 'in_progress') {
+        await apiPost(`/workflow/tasks/${task.id}/stop`, { reason: 'Manual stop from kanban' })
+        message.success(t('kanban.stopped', '已停止'))
+      } else if (action === 'resume' && currentStatus === 'stopped') {
+        await apiPost(`/workflow/tasks/${task.id}/resume`, {})
+        message.success(t('kanban.resumed', '已恢复'))
+      } else if (action === 'complete' && currentStatus === 'in_progress') {
+        await tasksApi.update(task.id, { status: 'completed' })
+        message.success(t('kanban.completed', '已完成'))
+      }
+
+      setTimeout(fetchData, 300)
+    } catch (e: any) {
+      message.error(e.message || t('app.error'))
+    }
+  }
+
   const handleBatchDelete = async () => {
     const ids = Array.from(selectedIds)
     try {
@@ -452,46 +536,55 @@ export function KanbanPage() {
 
   const handleDragUpdate = async (task: TaskItem, newStatus: string, reason?: string) => {
     try {
-      const currentStatus = task.status?.toLowerCase().replace(/[\s_-]/g, '_')
-      // Map drag targets to workflow state transitions
-      if (newStatus === 'planned' && currentStatus !== 'planned') {
-        // Re-plan: stop if in_progress, or reject if approved
+      const currentStatus = statusMatch(task.status)
+
+      // planned → approved: POST /workflow/tasks/{id}/review (approve)
+      if (newStatus === 'approved' && currentStatus === 'planned') {
+        await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'approve' })
+      }
+      // approved → in_progress: POST /workflow/tasks/{id}/dispatch
+      else if (newStatus === 'in_progress' && currentStatus === 'approved') {
+        await apiPost(`/workflow/tasks/${task.id}/dispatch`, { target_agent_id: task.ownerRole || 'main' })
+      }
+      // in_progress → review: tasksApi.update(status: review_pending)
+      else if (newStatus === 'review' && currentStatus === 'in_progress') {
+        await tasksApi.update(task.id, { status: 'review_pending' })
+      }
+      // in_progress → stopped: POST /workflow/tasks/{id}/stop
+      else if (newStatus === 'stopped' && currentStatus === 'in_progress') {
+        await apiPost(`/workflow/tasks/${task.id}/stop`, { reason: reason || 'Dragged to stopped' })
+      }
+      // stopped → in_progress: POST /workflow/tasks/{id}/resume
+      else if (newStatus === 'in_progress' && currentStatus === 'stopped') {
+        await apiPost(`/workflow/tasks/${task.id}/resume`, {})
+      }
+      // in_progress → completed: tasksApi.update(status: completed)
+      else if (newStatus === 'completed' && currentStatus === 'in_progress') {
+        await tasksApi.update(task.id, { status: 'completed' })
+      }
+      // any → planned (回退)
+      else if (newStatus === 'planned' && currentStatus !== 'planned') {
         if (currentStatus === 'in_progress') {
-          await apiPost(`/workflow/tasks/${task.id}/stop`, {})
+          await apiPost(`/workflow/tasks/${task.id}/stop`, { reason: reason || 'Dragged back to planned' })
         } else if (currentStatus === 'approved' || currentStatus === 'review') {
           await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'reject', comment: reason || 'Dragged back to planned' })
         }
-      } else if (newStatus === 'done') {
-        // Complete: stop then complete
-        if (currentStatus === 'in_progress') {
-          // We don't have a "complete" workflow endpoint that validates, use direct update for now
-          await tasksApi.update(task.id, { status: 'completed' })
-        } else if (currentStatus === 'planned') {
-          // planned -> approved -> dispatch -> in_progress -> completed (skip for drag UX)
-          await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'approve' })
-          await apiPost(`/workflow/tasks/${task.id}/dispatch`, { target_agent_id: 'main' })
-          await tasksApi.update(task.id, { status: 'completed' })
-        }
-      } else if (newStatus === 'in_progress' || newStatus === 'running') {
-        if (currentStatus === 'planned') {
-          await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'approve' })
-          await apiPost(`/workflow/tasks/${task.id}/dispatch`, { target_agent_id: 'main' })
-        } else if (currentStatus === 'stopped') {
-          await apiPost(`/workflow/tasks/${task.id}/resume`, {})
-        }
-      } else if (newStatus === 'review') {
-        if (currentStatus === 'in_progress') {
-          // Move to review_pending via direct status update (workflow doesn't have explicit review entry from in_progress beyond state machine)
-          await tasksApi.update(task.id, { status: 'review_pending' })
-        }
-      } else if (newStatus === 'blocked') {
-        if (currentStatus === 'in_progress') {
-          await apiPost(`/workflow/tasks/${task.id}/stop`, { reason: reason || 'Blocked' })
-        }
-      } else {
-        // Fallback to direct update for other transitions
+      }
+      // planned → completed (跳过审批): approve → dispatch → update completed
+      else if (newStatus === 'completed' && currentStatus === 'planned') {
+        await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'approve' })
+        await apiPost(`/workflow/tasks/${task.id}/dispatch`, { target_agent_id: task.ownerRole || 'main' })
+        await tasksApi.update(task.id, { status: 'completed' })
+      }
+      // review → approved: POST /workflow/tasks/{id}/review (approve)
+      else if (newStatus === 'approved' && currentStatus === 'review') {
+        await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'approve' })
+      }
+      // Other transitions (fallback to direct update)
+      else {
         await tasksApi.update(task.id, { status: newStatus })
       }
+
       setToast({ msg: t('kanban.dragSuccess'), type: 'success' })
       setTimeout(fetchData, 300)
     } catch (e: any) {
@@ -548,7 +641,7 @@ export function KanbanPage() {
     if (!result.destination || !ref) return
     const targetCol = result.destination.droppableId as TaskStatus
     if (targetCol === ref.fromCol) return
-    if (targetCol === 'blocked') {
+    if (targetCol === 'stopped') {
       setBlockModal({ card: ref.task, target: targetCol })
     } else {
       handleDragUpdate(ref.task, targetCol)
@@ -557,8 +650,8 @@ export function KanbanPage() {
 
   const allTasksSelected = tasks.length > 0 && tasks.every(t => selectedIds.has(t.id))
 
-  // DnD columns (exclude 'running' since it's virtual)
-  const dndColumns = TASK_COLUMNS.filter(c => c.id !== 'running')
+  // DnD columns (all columns are now real, no virtual columns)
+  const dndColumns = TASK_COLUMNS
 
   return (
     <div>
@@ -596,7 +689,23 @@ export function KanbanPage() {
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-2)' }}>
-            {runningTasks.map(rt => <RunningTaskCard key={rt.taskId} rt={rt} />)}
+            {runningTasks.map(rt => (
+              <RunningTaskCard
+                key={rt.taskId}
+                rt={rt}
+                onStop={async () => {
+                  try {
+                    await apiPost(`/workflow/tasks/${rt.taskId}/stop`, { reason: 'Manual stop from running tasks' })
+                    setRunningTasks(prev => prev.filter(r => r.taskId !== rt.taskId))
+                    setExecutingIds(prev => { const n = new Set(prev); n.delete(rt.taskId); return n })
+                    message.success(t('kanban.stopped', '已停止'))
+                    setTimeout(fetchData, 300)
+                  } catch (e: any) {
+                    message.error(e.message || t('app.error'))
+                  }
+                }}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -676,6 +785,8 @@ export function KanbanPage() {
                                   onExecute={() => handleExecute(task)}
                                   isExecuting={executingIds.has(task.id)}
                                   selectMode={selectMode}
+                                  onAction={(action) => handleTaskAction(task, action)}
+                                  onClick={() => navigate(`/tasks/${task.id}`)}
                                 />
                               </div>
                             )}

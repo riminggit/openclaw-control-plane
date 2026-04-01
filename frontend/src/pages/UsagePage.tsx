@@ -70,10 +70,12 @@ export function UsagePage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+      {/* Page Header */}
+      <div className="page-header">
         <div>
-          <p className="eyebrow">{t('usage.eyebrow', '用量统计')}</p>
-          <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 600 }}>{t('usage.title', 'Usage 统计')}</h1>
+          <div className="page-eyebrow">{t('usage.eyebrow', '用量统计')}</div>
+          <h1 className="page-title">{t('usage.title', 'Usage 统计')}</h1>
+          <p className="page-subtitle">{t('usage.subtitle', '查看 Token 使用量和会话统计')}</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-1)', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 2 }}>
           {(['today', '7d', '30d'] as const).map(r => (

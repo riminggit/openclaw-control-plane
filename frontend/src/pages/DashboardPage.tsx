@@ -60,7 +60,7 @@ export function DashboardPage() {
       <div className="page-header">
         <p className="page-header-eyebrow">{t('dashboard.eyebrow')}</p>
         <h1>{t('dashboard.title')}</h1>
-        <p className="page-header.subtitle">{t('dashboard.subtitle')}</p>
+        <p className="page-header-desc">{t('dashboard.subtitle')}</p>
         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
           Runtime {runtimeVersion} · Auto-refresh 30s
         </div>
@@ -142,8 +142,8 @@ export function DashboardPage() {
         {sessionsLoading ? (
           <div className="card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>{t('app.loading')}</div>
         ) : (!sessions || sessions.length === 0) ? (
-          <div className="card-body empty-state" style={{ padding: 'var(--space-10)' }}>
-            <div className="empty-state-desc">{t('dashboard.no_sessions')}</div>
+          <div className="card-body" style={{ padding: 'var(--space-10)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <Empty description={t('dashboard.no_sessions')} />
           </div>
         ) : (
           <div className="table-wrapper" style={{ borderRadius: 0, border: 'none' }}>

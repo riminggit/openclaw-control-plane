@@ -164,10 +164,17 @@ export function ChatPage() {
 
   if (connState !== 'connected') {
     return (
-      <div className="empty-state">
-        <div className="empty-state-icon">🔌</div>
-        <div className="empty-state-title">{t('dashboard.not_connected')}</div>
-        <a href="/settings" className="btn btn-primary" style={{ textDecoration: 'none' }}>{t('gateway.go_settings')}</a>
+      <div style={{ padding: 'var(--space-10)', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <Empty
+          description={
+            <div>
+              <div style={{ marginBottom: 'var(--space-2)' }}>{t('dashboard.not_connected')}</div>
+              <a href="/settings" style={{ textDecoration: 'none' }}>
+                <Button type="primary">{t('gateway.go_settings')}</Button>
+              </a>
+            </div>
+          }
+        />
       </div>
     )
   }
@@ -183,7 +190,9 @@ export function ChatPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--topbar-height, 56px) - 80px)' }}>
       <div className="page-header" style={{ flexShrink: 0 }}>
+        <p className="page-header-eyebrow">{t('chat.eyebrow', 'Communication')}</p>
         <h1>{t('chat.title')}</h1>
+        <p className="page-header-desc">{t('chat.subtitle', 'Chat with agents and manage messages')}</p>
       </div>
 
       {/* Tabs */}
@@ -205,9 +214,8 @@ export function ChatPage() {
         <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-body" style={{ flex: 1, overflow: 'auto' }}>
             {messages.length === 0 && (
-              <div className="empty-state" style={{ height: '100%' }}>
-                <div className="empty-state-icon">💬</div>
-                <div className="empty-state-desc">{t('chat.empty')}</div>
+              <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Empty description={t('chat.empty')} />
               </div>
             )}
             {messages.map((msg, i) => (
@@ -250,7 +258,7 @@ export function ChatPage() {
         <div className="card" style={{ flex: 1, overflow: 'auto' }}>
           <div className="card-body">
             {allMessages.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 32 }}>{t('app.no_data')}</div>
+              <Empty description={t('app.no_data')} style={{ padding: 32 }} />
             ) : allMessages.map((m: any, i: number) => (
               <div key={i} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -279,7 +287,7 @@ export function ChatPage() {
               <Button type="primary" onClick={handleSearch} disabled={searching}>{t('app.search')}</Button>
             </div>
             {searchResults.length === 0 && searchQuery && !searching && (
-              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 32 }}>{t('chat.noResults')}</div>
+              <Empty description={t('chat.noResults')} style={{ padding: 32 }} />
             )}
             {searchResults.map((r: any, i: number) => (
               <div key={i} style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-color)' }}>
@@ -321,7 +329,7 @@ export function ChatPage() {
             </div>
             <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 12, border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: 4 }}>
               {broadcastSessions.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', padding: 12, fontSize: 13 }}>{t('app.no_data')}</div>
+                <Empty description={t('app.no_data')} style={{ padding: 12 }} />
               ) : broadcastSessions.map((s: any, idx: number) => {
                 const sKey = getSessionKey(s)
                 return (
@@ -364,7 +372,7 @@ export function ChatPage() {
         <div className="card" style={{ flex: 1, overflow: 'auto' }}>
           <div className="card-body">
             {bookmarks.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 32 }}>{t('app.no_data')}</div>
+              <Empty description={t('app.no_data')} style={{ padding: 32 }} />
             ) : bookmarks.map((b: any) => (
               <div key={b.id} style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

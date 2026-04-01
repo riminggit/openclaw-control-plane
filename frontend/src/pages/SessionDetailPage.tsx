@@ -72,9 +72,9 @@ export function SessionDetailPage() {
 
   if (connState !== 'connected') {
     return (
-      <div className="empty-state">
-        <div className="empty-state-icon">🔌</div>
-        <div className="empty-state-title">{t('dashboard.not_connected')}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-16)', gap: 'var(--space-4)' }}>
+        <div style={{ fontSize: '48px', opacity: 0.5 }}>🔌</div>
+        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--text-primary)' }}>{t('dashboard.not_connected')}</div>
         <Link to="/settings" className="btn btn-primary" style={{ textDecoration: 'none' }}>{t('gateway.go_settings')}</Link>
       </div>
     )
@@ -82,9 +82,15 @@ export function SessionDetailPage() {
 
   return (
     <div>
+      {/* Page Header */}
       <div className="page-header">
-        <Link to="/sessions" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: 'var(--text-sm)' }}>{t('app.back')}</Link>
-        <h1 style={{ marginTop: 'var(--space-2)', wordBreak: 'break-all' }}>{t('session_detail.title')}：{key}</h1>
+        <div>
+          <Link to="/sessions" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: 'var(--text-sm)', display: 'inline-block', marginBottom: 'var(--space-2)' }}>
+            ← {t('sessions.title')}
+          </Link>
+          <div className="page-eyebrow">{t('session_detail.eyebrow', '会话详情')}</div>
+          <h1 className="page-title" style={{ wordBreak: 'break-all' }}>{t('session_detail.title')}：{key}</h1>
+        </div>
       </div>
 
       {/* Actions */}

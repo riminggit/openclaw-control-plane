@@ -74,9 +74,8 @@ export function SessionsPage() {
         {loading ? (
           <div className="card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>{t('app.loading')}</div>
         ) : filtered.length === 0 ? (
-          <div className="card-body empty-state" style={{ padding: 'var(--space-10)' }}>
-            <div className="empty-state-icon">💬</div>
-            <div className="empty-state-desc">{search || filterKind ? t('sessions.no_match') : t('sessions.no_sessions')}</div>
+          <div className="card-body" style={{ padding: 'var(--space-10)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <Empty description={search || filterKind ? t('sessions.no_match') : t('sessions.no_sessions')} />
           </div>
         ) : (
           <div className="table-wrapper">

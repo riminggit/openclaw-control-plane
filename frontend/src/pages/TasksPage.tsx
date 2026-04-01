@@ -117,10 +117,15 @@ export function TasksPage() {
 
       {!loading && !error && filtered.length === 0 && (
         <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon">📋</div>
-            <div className="empty-state-title">{t('tasks.no_tasks')}</div>
-            <Button type="primary" onClick={() => setShowForm(true)}>{t('tasks.new_task')}</Button>
+          <div className="card-body" style={{ padding: 'var(--space-10)' }}>
+            <Empty
+              description={
+                <div>
+                  <div style={{ marginBottom: 'var(--space-2)' }}>{t('tasks.no_tasks')}</div>
+                  <Button type="primary" onClick={() => setShowForm(true)}>{t('tasks.new_task')}</Button>
+                </div>
+              }
+            />
           </div>
         </div>
       )}
