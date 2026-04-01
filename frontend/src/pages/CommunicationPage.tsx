@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button, Input, Select, Card } from 'antd'
+
 
 const API = '/api/communication'
 
@@ -59,20 +61,29 @@ export function CommunicationPage() {
   // Auto-refresh
   const timerRef = useRef<ReturnType<typeof setInterval>>()
 
+  /** Defensively unwrap API responses that may be { items: [...] } or { messages: [...] } or plain array */
+  const unwrap = (raw: any, ...keys: string[]): any[] => {
+    if (Array.isArray(raw)) return raw
+    for (const k of keys) {
+      if (raw?.[k] && Array.isArray(raw[k])) return raw[k]
+    }
+    return []
+  }
+
   const fetchMessages = useCallback(async () => {
-    try { const r = await fetch(`${API}/messages`); if (r.ok) setMessages(await r.json()) } catch {}
+    try { const r = await fetch(`${API}/messages`); if (r.ok) setMessages(unwrap(await r.json(), 'messages', 'items')) } catch {}
   }, [])
 
   const fetchWebhooks = useCallback(async () => {
-    try { const r = await fetch(`${API}/hooks`); if (r.ok) setWebhooks(await r.json()) } catch {}
+    try { const r = await fetch(`${API}/hooks`); if (r.ok) setWebhooks(unwrap(await r.json(), 'hooks', 'items', 'webhooks')) } catch {}
   }, [])
 
   const fetchApprovals = useCallback(async () => {
-    try { const r = await fetch(`${API}/approvals`); if (r.ok) setApprovals(await r.json()) } catch {}
+    try { const r = await fetch(`${API}/approvals`); if (r.ok) setApprovals(unwrap(await r.json(), 'approvals', 'items')) } catch {}
   }, [])
 
   const fetchCommands = useCallback(async () => {
-    try { const r = await fetch(`${API}/commands`); if (r.ok) setCommands(await r.json()) } catch {}
+    try { const r = await fetch(`${API}/commands`); if (r.ok) setCommands(unwrap(await r.json(), 'commands', 'items')) } catch {}
   }, [])
 
   useEffect(() => {
@@ -148,9 +159,9 @@ export function CommunicationPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 'var(--space-1)', borderBottom: '1px solid var(--border-default)', paddingBottom: 'var(--space-2)' }}>
         {tabs.map(tab => (
-          <button key={tab.key} className={`btn ${activeTab === tab.key ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab(tab.key)} style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0' }}>
+          <Button key={tab.key} className={`btn ${activeTab === tab.key ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab(tab.key)} style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0' }}>
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -184,19 +195,19 @@ export function CommunicationPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxWidth: 500 }}>
             <div>
               <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>{t('comm.target')}</label>
-              <select value={bcTarget} onChange={e => setBcTarget(e.target.value)} className="input" style={{ width: '100%' }}>
-                <option value="all">{t('comm.target_all')}</option>
-                <option value="channel">{t('comm.target_channel')}</option>
-                <option value="session">{t('comm.target_session')}</option>
-              </select>
+              <Select value={bcTarget} onChange={e => setBcTarget(e)} className="input" style={{ width: '100%' }}>
+                <Select.Option value="all">{t('comm.target_all')}</Select.Option>
+                <Select.Option value="channel">{t('comm.target_channel')}</Select.Option>
+                <Select.Option value="session">{t('comm.target_session')}</Select.Option>
+              </Select>
             </div>
             <div>
               <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>{t('comm.message')}</label>
-              <textarea value={bcMessage} onChange={e => setBcMessage(e.target.value)} placeholder={t('comm.broadcast_placeholder')} className="input" style={{ width: '100%', minHeight: 80, resize: 'vertical' }} />
+              <Input.TextArea value={bcMessage} onChange={e => setBcMessage(e.target.value)} placeholder={t('comm.broadcast_placeholder')} className="input" style={{ width: '100%', minHeight: 80, resize: 'vertical' }} />
             </div>
-            <button className="btn btn-primary" onClick={handleBroadcast} disabled={bcSending || !bcMessage.trim()} style={{ alignSelf: 'flex-start' }}>
+            <Button type="primary" onClick={handleBroadcast} disabled={bcSending || !bcMessage.trim()} style={{ alignSelf: 'flex-start' }}>
               {bcSending ? t('app.saving') : t('comm.send')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -217,9 +228,9 @@ export function CommunicationPage() {
                       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--accent)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>{execResult[cmd.id]}</div>
                     )}
                   </div>
-                  <button className="btn btn-secondary" onClick={() => handleExecCommand(cmd.id, cmd.name)} disabled={execLoading[cmd.id]} style={{ fontSize: 'var(--text-xs)' }}>
+                  <Button onClick={() => handleExecCommand(cmd.id, cmd.name)} disabled={execLoading[cmd.id]} style={{ fontSize: 'var(--text-xs)' }}>
                     {execLoading[cmd.id] ? '...' : t('comm.execute')}
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -233,13 +244,13 @@ export function CommunicationPage() {
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>URL</label>
-              <input value={hookUrl} onChange={e => setHookUrl(e.target.value)} placeholder="https://..." className="input" style={{ width: '100%' }} />
+              <Input value={hookUrl} onChange={e => setHookUrl(e.target.value)} placeholder="https://..." />
             </div>
             <div style={{ width: 200 }}>
               <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>{t('comm.events')}</label>
-              <input value={hookEvents} onChange={e => setHookEvents(e.target.value)} placeholder="message,session" className="input" style={{ width: '100%' }} />
+              <Input value={hookEvents} onChange={e => setHookEvents(e.target.value)} placeholder="message,session" />
             </div>
-            <button className="btn btn-primary" onClick={handleCreateHook}>{t('app.create')}</button>
+            <Button type="primary" onClick={handleCreateHook}>{t('app.create')}</Button>
           </div>
           {webhooks.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('comm.no_hooks')}</p>
@@ -251,7 +262,7 @@ export function CommunicationPage() {
                     <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>{wh.url}</div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{wh.events.join(', ')} · {wh.created}</div>
                   </div>
-                  <button className="btn btn-danger" onClick={() => handleDeleteHook(wh.id)} style={{ fontSize: 'var(--text-xs)' }}>{t('app.delete')}</button>
+                  <Button danger onClick={() => handleDeleteHook(wh.id)} style={{ fontSize: 'var(--text-xs)' }}>{t('app.delete')}</Button>
                 </div>
               ))}
             </div>
@@ -275,8 +286,8 @@ export function CommunicationPage() {
                   <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                     {ap.status === 'pending' ? (
                       <>
-                        <button className="btn btn-primary" onClick={() => handleApproval(ap.id, 'approve')} style={{ fontSize: 'var(--text-xs)' }}>{t('comm.approve')}</button>
-                        <button className="btn btn-danger" onClick={() => handleApproval(ap.id, 'reject')} style={{ fontSize: 'var(--text-xs)' }}>{t('comm.reject')}</button>
+                        <Button type="primary" onClick={() => handleApproval(ap.id, 'approve')} style={{ fontSize: 'var(--text-xs)' }}>{t('comm.approve')}</Button>
+                        <Button danger onClick={() => handleApproval(ap.id, 'reject')} style={{ fontSize: 'var(--text-xs)' }}>{t('comm.reject')}</Button>
                       </>
                     ) : (
                       <span className={`badge ${ap.status === 'approved' ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 'var(--text-xs)' }}>

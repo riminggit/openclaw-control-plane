@@ -228,3 +228,10 @@ def handle_approval(approval_id: str, body: ApprovalAction, db: Session = Depend
         return {"status": "rejected", "command": approval.command}
     else:
         raise HTTPException(400, "action must be 'approve' or 'reject'")
+
+
+# Aliases for frontend compatibility
+@router.get("/messages")
+def list_messages_alias(limit: int = Query(20, le=100)):
+    """Alias for /recent-messages - frontend compatibility."""
+    return get_recent_messages(limit)

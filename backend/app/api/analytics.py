@@ -46,6 +46,16 @@ class BudgetUpdate(BaseModel):
 
 # ── Summary ──
 
+@router.get("")
+def cost_root(db: Session = Depends(get_db)):
+    """Return cost analytics overview (same as /summary)."""
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    rows = db.query(func.sum(DailyCostSummary.total_tokens), func.sum(DailyCostSummary.estimated_cost_usd))\
+        .filter(DailyCostSummary.date >= today).first()
+    return {"period": "daily", "tokens": rows[0] or 0, "cost_usd": round(rows[1] or 0, 4)}
+
+
 @router.get("/summary")
 def cost_summary(period: str = Query("daily"), db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)

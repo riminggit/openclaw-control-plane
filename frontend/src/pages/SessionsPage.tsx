@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSessions, useConnectionState } from '../hooks/useGateway'
 import { Link } from 'react-router-dom'
+import { Button, Input, Select, Table, Card, Empty, Spin } from 'antd'
+
 
 export function SessionsPage() {
   const { t } = useTranslation()
@@ -51,20 +53,20 @@ export function SessionsPage() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          className="form-input"
+        <Input
           style={{ maxWidth: 300 }}
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={t('sessions.search_placeholder')}
+          allowClear
         />
         {kinds.length > 1 && (
-          <select className="form-input" value={filterKind} onChange={e => setFilterKind(e.target.value)} style={{ minWidth: 150 }}>
-            <option value="">{t('sessions.all_kinds')}</option>
-            {kinds.map(k => <option key={k} value={k}>{k}</option>)}
-          </select>
+          <Select className="form-input" value={filterKind} onChange={e => setFilterKind(e)} style={{ minWidth: 150 }}>
+            <Select.Option value="">{t('sessions.all_kinds')}</Select.Option>
+            {kinds.map(k => <Select.Option key={k} value={k}>{k}</Select.Option>)}
+          </Select>
         )}
-        <button className="btn btn-ghost" onClick={refetch} disabled={loading}>🔄 {t('app.retry')}</button>
+        <Button type="text" onClick={refetch} disabled={loading}>🔄 {t('app.retry')}</Button>
         <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('app.total', { count: filtered.length })}</span>
       </div>
 

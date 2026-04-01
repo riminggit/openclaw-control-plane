@@ -318,7 +318,8 @@
     "dragSuccess": "Action successful",
     "dragFailed": "Action failed",
     "noCards": "No cards",
-    "tokens": "tokens"
+    "tokens": "tokens",
+    "syncError": "Sync error"
   },
   "lifecycle": {
     "eyebrow": "Phase 4",

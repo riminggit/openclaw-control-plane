@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { tasksApi, type TaskItem } from '../api/modules/tasks'
 import { projectsApi } from '../api/modules/projects'
+import { Button, Input, Select, Modal } from 'antd'
+
 
 interface TaskFormProps {
   task?: TaskItem | null
@@ -61,59 +63,59 @@ export function TaskForm({ task, projectId, onClose, onSaved }: TaskFormProps) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{isEdit ? t('tasks.form_edit_title') : t('tasks.form_title')}</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <Button className="modal-close" onClick={onClose}>×</Button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>{t('tasks.project')}</label>
-            <select value={projectIdVal} onChange={e => setProjectIdVal(e.target.value)} disabled={isEdit}>
-              {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
-            </select>
+            <Select value={projectIdVal} onChange={e => setProjectIdVal(e)} disabled={isEdit}>
+              {projects.map(p => <Select.Option key={p.id} value={p.id}>{p.code} — {p.name}</Select.Option>)}
+            </Select>
           </div>
           <div className="form-group">
             <label>{t('tasks.title_col')} *</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('tasks.title_col')} required />
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('tasks.title_col')} required />
           </div>
           <div className="form-group">
             <label>{t('tasks.detail.description')}</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('tasks.detail.description_placeholder')} rows={3} style={{ resize: 'vertical', fontFamily: 'var(--font-sans)' }} />
+            <Input.TextArea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('tasks.detail.description_placeholder')} rows={3} style={{ resize: 'vertical', fontFamily: 'var(--font-sans)' }} />
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>{t('tasks.detail.category')}</label>
-              <select value={category} onChange={e => setCategory(e.target.value)}>
-                {categories.map(c => <option key={c} value={c}>{t(`category.${c}`, c)}</option>)}
-              </select>
+              <Select value={category} onChange={e => setCategory(e)}>
+                {categories.map(c => <Select.Option key={c} value={c}>{t(`category.${c}`, c)}</Select.Option>)}
+              </Select>
             </div>
             <div className="form-group">
               <label>{t('tasks.priority')}</label>
-              <select value={priority} onChange={e => setPriority(e.target.value)}>
-                {priorities.map(p => <option key={p} value={p}>{t(`priority.${p}`, p)}</option>)}
-              </select>
+              <Select value={priority} onChange={e => setPriority(e)}>
+                {priorities.map(p => <Select.Option key={p} value={p}>{t(`priority.${p}`, p)}</Select.Option>)}
+              </Select>
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>{t('tasks.status')}</label>
-              <select value={status} onChange={e => setStatus(e.target.value)}>
-                {statuses.map(s => <option key={s} value={s}>{t(`status.${s}`, s.replace('_', ' '))}</option>)}
-              </select>
+              <Select value={status} onChange={e => setStatus(e)}>
+                {statuses.map(s => <Select.Option key={s} value={s}>{t(`status.${s}`, s.replace('_', ' '))}</Select.Option>)}
+              </Select>
             </div>
             <div className="form-group">
               <label>{t('tasks.detail.phase')}</label>
-              <input value={phase} onChange={e => setPhase(e.target.value)} placeholder={t("tasks.detail.phase_placeholder")} />
+              <Input value={phase} onChange={e => setPhase(e.target.value)} placeholder={t("tasks.detail.phase_placeholder")} />
             </div>
           </div>
           <div className="form-group">
             <label>{t('tasks.owner')}</label>
-            <input value={ownerRole} onChange={e => setOwnerRole(e.target.value)} placeholder={t("tasks.owner_placeholder")} />
+            <Input value={ownerRole} onChange={e => setOwnerRole(e.target.value)} placeholder={t("tasks.owner_placeholder")} />
           </div>
           {error && <div className="form-error">{error}</div>}
           <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>{t('app.cancel')}</button>
-            <button type="submit" className="btn btn-primary" disabled={loading || !title.trim()}>
+            <Button htmlType="button" className="btn btn-secondary" onClick={onClose}>{t('app.cancel')}</Button>
+            <Button htmlType="submit" className="btn btn-primary" disabled={loading || !title.trim()}>
               {loading ? t('app.saving') : isEdit ? t('app.save') : t('app.create')}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

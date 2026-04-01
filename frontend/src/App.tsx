@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ConfigProvider, theme as antdTheme } from 'antd'
 import { AppLayout } from './layouts/AppLayout'
 import { DashboardPage } from './pages/DashboardPage'
 import { SessionsPage } from './pages/SessionsPage'
@@ -30,8 +31,32 @@ export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <GatewayProvider>
-          <Routes>
+        <ConfigProvider
+          theme={{
+            algorithm: antdTheme.darkAlgorithm,
+            token: {
+              colorPrimary: '#6366f1',
+              borderRadius: 8,
+              colorBgContainer: '#1e1e2e',
+              colorBgElevated: '#262637',
+              colorBgLayout: '#13131f',
+              colorText: '#e2e8f0',
+              colorTextSecondary: '#94a3b8',
+              colorBorder: '#2e2e42',
+              fontFamily: 'inherit',
+            },
+            components: {
+              Button: { borderRadius: 6 },
+              Input: { borderRadius: 6 },
+              Select: { borderRadius: 6 },
+              Card: { borderRadius: 10 },
+              Table: { borderRadius: 8 },
+              Modal: { borderRadius: 10 },
+            },
+          }}
+        >
+          <GatewayProvider>
+            <Routes>
             <Route element={<AppLayout />}>
               <Route index element={<DashboardPage />} />
               <Route path="sessions" element={<SessionsPage />} />
@@ -58,7 +83,8 @@ export default function App() {
               <Route path="communication" element={<CommunicationPage />} />
             </Route>
           </Routes>
-        </GatewayProvider>
+          </GatewayProvider>
+        </ConfigProvider>
       </ThemeProvider>
     </BrowserRouter>
   )

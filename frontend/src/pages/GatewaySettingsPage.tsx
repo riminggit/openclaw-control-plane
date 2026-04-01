@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useConnectionState } from '../hooks/useGateway'
+import { Card } from 'antd'
+
 
 export function GatewaySettingsPage() {
   const { t } = useTranslation()

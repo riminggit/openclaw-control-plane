@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Dropdown, Button } from 'antd'
+import type { MenuProps } from 'antd'
 import { useTheme, THEMES, type ThemeName } from '../components/ThemeProvider'
 import { useConnectionState } from '../hooks/useGateway'
 
@@ -33,10 +35,6 @@ export function AppLayout() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [langOpen, setLangOpen] = useState(false)
-  const [themeOpen, setThemeOpen] = useState(false)
-  const langRef = useRef<HTMLDivElement>(null)
-  const themeRef = useRef<HTMLDivElement>(null)
 
   const connState = useConnectionState()
 
@@ -44,23 +42,12 @@ export function AppLayout() {
     setMobileOpen(false)
   }, [location.pathname])
 
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false)
-      if (themeRef.current && !themeRef.current.contains(e.target as Node)) setThemeOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
   const switchLang = (lang: string) => {
     i18n.changeLanguage(lang)
-    setLangOpen(false)
   }
 
-  const switchTheme = (t: ThemeName) => {
-    setTheme(t)
-    setThemeOpen(false)
+  const switchTheme = (th: ThemeName) => {
+    setTheme(th)
   }
 
   const breadcrumbMap: Record<string, string> = {
@@ -100,11 +87,7 @@ export function AppLayout() {
             </svg>
             {!collapsed && <span>{t('app.brand')}</span>}
           </div>
-          <button className="sidebar-toggle" onClick={() => setCollapsed(!collapsed)} title={t("nav.toggle_sidebar")}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }}>
-              <path d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+          <Button className="sidebar-toggle" type="text" icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }}><path d="M9 5l7 7-7 7" /></svg>} onClick={() => setCollapsed(!collapsed)} title={t("nav.toggle_sidebar")} />
         </div>
         <nav className="sidebar-nav">
           {navItems.map(item => (
@@ -121,34 +104,44 @@ export function AppLayout() {
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
             {!collapsed && <span style={{ fontSize: 'var(--text-xs)' }}>{connState === 'connected' ? t('gateway.state_connected') : connState === 'connecting' ? t('gateway.state_connecting') : t('gateway.state_disconnected')}</span>}
           </div>
-          <div className="dropdown">
-            <button className="dropdown-trigger" onClick={() => setThemeOpen(!themeOpen)}>
+          <Dropdown
+            menu={{
+              items: THEMES.map(th => ({
+                key: th.name,
+                label: (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <span className="color-dot" style={{ background: th.preview }} />
+                    {!collapsed && t(`theme.${th.name}`)}
+                  </span>
+                ),
+                onClick: () => switchTheme(th.name),
+              })),
+              selectedKeys: [theme],
+            }}
+            trigger={['click']}
+            placement="topRight"
+          >
+            <Button type="text" className="dropdown-trigger">
               🎨
               {!collapsed && <span>{t('theme.label')}</span>}
-            </button>
-            {themeOpen && (
-              <div className="dropdown-menu">
-                {THEMES.map((th) => (
-                  <button key={th.name} className={`dropdown-item ${theme === th.name ? 'active' : ''}`} onClick={() => switchTheme(th.name)}>
-                    <span className="color-dot" style={{ background: th.preview }} />
-                    {!collapsed && <span>{t(`theme.${th.name}`)}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="dropdown">
-            <button className="dropdown-trigger" onClick={() => setLangOpen(!langOpen)}>
+            </Button>
+          </Dropdown>
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'zh', label: '中文', onClick: () => switchLang('zh') },
+                { key: 'en', label: 'English', onClick: () => switchLang('en') },
+              ],
+              selectedKeys: [i18n.language],
+            }}
+            trigger={['click']}
+            placement="topRight"
+          >
+            <Button type="text" className="dropdown-trigger">
               🌐
               {!collapsed && <span>{t('language.label')}</span>}
-            </button>
-            {langOpen && (
-              <div className="dropdown-menu" ref={langRef}>
-                <button className="dropdown-item" onClick={() => switchLang('zh')}>中文</button>
-                <button className="dropdown-item" onClick={() => switchLang('en')}>English</button>
-              </div>
-            )}
-          </div>
+            </Button>
+          </Dropdown>
         </div>
       </aside>
       {/* Mobile overlay */}
@@ -157,11 +150,7 @@ export function AppLayout() {
       )}
       <div className="main-wrapper" style={{ marginLeft: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)' }}>
         <div className="topbar">
-          <button className="topbar-hamburger" onClick={() => setMobileOpen(true)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 12h18M3 6h18M3 18h18" />
-            </svg>
-          </button>
+          <Button className="topbar-hamburger" type="text" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 12h18M3 6h18M3 18h18" /></svg>} onClick={() => setMobileOpen(true)} />
           <div className="breadcrumb">
             {breadcrumbItems.map((item, i) => (
               <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>

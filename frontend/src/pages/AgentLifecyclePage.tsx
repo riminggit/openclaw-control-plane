@@ -1,5 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button, Tag, Table, Switch, Popconfirm, Checkbox, Empty, Card, Row, Col, Statistic, Typography, Progress, message, Space } from 'antd'
+import { gatewayClient } from '../lib/gateway-client'
+import { useConnectionState } from '../hooks/useGateway'
+
+const { Text } = Typography
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'var(--status-green)',
@@ -45,10 +50,28 @@ export function AgentLifecyclePage() {
   const [autoConfig, setAutoConfig] = useState<AutoCleanupConfig | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const connState = useConnectionState()
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (skipSync = false) => {
     try {
+      // Sync sessions from Gateway first (if connected)
+      if (!skipSync && connState === 'connected') {
+        try {
+          setSyncing(true)
+          const res = await gatewayClient.call('sessions.list', { limit: 200, activeMinutes: 1440 })
+          const sessions = res?.sessions || (Array.isArray(res) ? res : [])
+          if (sessions.length > 0) {
+            await fetch('/api/agents/lifecycle/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessions }),
+            })
+          }
+        } catch { /* sync failed, still load data */ }
+        finally { setSyncing(false) }
+      }
+
       const [agentsRes, logsRes, configRes] = await Promise.all([
         fetch('/api/agents/lifecycle').then(r => r.json()),
         fetch('/api/agents/lifecycle/cleanup-logs?limit=50').then(r => r.json()).catch(() => []),
@@ -59,11 +82,11 @@ export function AgentLifecyclePage() {
       if (configRes) setAutoConfig(configRes)
     } catch { /* ignore */ }
     setLoading(false)
-  }, [])
+  }, [connState])
 
   useEffect(() => { fetchData() }, [fetchData])
   useEffect(() => {
-    const timer = setInterval(fetchData, 30000)
+    const timer = setInterval(() => fetchData(true), 30000)
     return () => clearInterval(timer)
   }, [fetchData])
 
@@ -86,21 +109,21 @@ export function AgentLifecyclePage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_keys: Array.from(selected) }),
       })
-      setToast({ msg: t('lifecycle.cleanupSuccess'), ok: true })
+      message.success(t('lifecycle.cleanupSuccess'))
       setSelected(new Set())
-      setTimeout(fetchData, 500)
+      setTimeout(() => fetchData(true), 500)
     } catch {
-      setToast({ msg: t('lifecycle.cleanupFailed'), ok: false })
+      message.error(t('lifecycle.cleanupFailed'))
     }
   }
 
   const autoCleanup = async () => {
     try {
       await fetch('/api/agents/lifecycle/cleanup/auto', { method: 'POST' })
-      setToast({ msg: t('lifecycle.cleanupSuccess'), ok: true })
-      setTimeout(fetchData, 500)
+      message.success(t('lifecycle.cleanupSuccess'))
+      setTimeout(() => fetchData(true), 500)
     } catch {
-      setToast({ msg: t('lifecycle.cleanupFailed'), ok: false })
+      message.error(t('lifecycle.cleanupFailed'))
     }
   }
 
@@ -121,200 +144,149 @@ export function AgentLifecyclePage() {
     return acc
   }, {} as Record<string, number>)
 
+  const statusCards = [
+    { key: 'ACTIVE', color: '#52c41a' },
+    { key: 'IDLE', color: '#1890ff' },
+    { key: 'STALE', color: '#faad14' },
+    { key: 'ZOMBIE', color: '#ff4d4f' },
+    { key: 'COMPLETED', color: '#6b7280' },
+    { key: 'FAILED', color: '#ff4d4f' },
+  ]
+
+  const agentColumns = [
+    {
+      title: '', dataIndex: 'session_key', width: 48,
+      render: (key: string) => <Checkbox checked={selected.has(key)} onChange={() => toggleSelect(key)} />,
+    },
+    { title: t('lifecycle.label'), dataIndex: 'agent_label', key: 'label',
+      render: (label: string | null, r: LifecycleAgent) => (
+        <a href={`/sessions/${r.session_key}`} style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>
+          {label || r.agent_id || r.session_key}
+        </a>
+      ),
+    },
+    { title: t('lifecycle.status'), dataIndex: 'status', key: 'status',
+      render: (status: string) => (
+        <Tag color={
+          status === 'ACTIVE' ? 'green' : status === 'IDLE' ? 'blue' : status === 'STALE' ? 'warning' : status === 'ZOMBIE' ? 'red' : 'default'
+        }>{status}</Tag>
+      ),
+    },
+    { title: t('lifecycle.channel'), dataIndex: 'channel', key: 'channel', render: (v: string) => v || '—' },
+    { title: t('lifecycle.model'), dataIndex: 'model', key: 'model', render: (v: string) => v || '—', width: 160 },
+    { title: t('lifecycle.tokens'), dataIndex: 'total_tokens', key: 'tokens', align: 'right' as const,
+      render: (v: number) => v > 0 ? v.toLocaleString() : '—',
+    },
+    { title: t('lifecycle.lastActive'), dataIndex: 'last_active_at', key: 'lastActive', width: 160,
+      render: (v: string) => v ? new Date(v).toLocaleString() : '—',
+    },
+  ]
+
+  const logColumns = [
+    { title: t('lifecycle.agent'), dataIndex: 'agent_label', key: 'agent',
+      render: (v: string | null, r: CleanupLogEntry) => v || r.session_key,
+    },
+    { title: t('lifecycle.status'), dataIndex: 'lifecycle_state', key: 'state',
+      render: (v: string) => <Tag>{v}</Tag>,
+    },
+    { title: t('lifecycle.action'), dataIndex: 'action', key: 'action' },
+    { title: t('lifecycle.detail'), dataIndex: 'detail', key: 'detail',
+      render: (v: string | null) => v || '—', ellipsis: true,
+    },
+    { title: t('lifecycle.cleanedAt'), dataIndex: 'cleaned_at', key: 'cleaned', width: 160,
+      render: (v: string) => new Date(v).toLocaleString(),
+    },
+  ]
+
   if (loading) {
     return (
       <div>
         <div className="page-header">
-          <p className="page-header-eyebrow">{t('lifecycle.eyebrow')}</p>
-          <h1>{t('lifecycle.title')}</h1>
+          <div className="page-eyebrow">{t('lifecycle.eyebrow')}</div>
+          <h1 className="page-title">{t('lifecycle.title')}</h1>
         </div>
-        <div className="skeleton" style={{ height: 100, borderRadius: 'var(--radius-lg)', marginBottom: 16 }} />
-        <div className="skeleton" style={{ height: 300, borderRadius: 'var(--radius-lg)' }} />
+        <Card loading style={{ marginBottom: 16 }} />
+        <Card loading />
       </div>
     )
   }
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      {/* Page Header */}
       <div className="page-header">
-        <p className="page-header-eyebrow">{t('lifecycle.eyebrow')}</p>
-        <h1>{t('lifecycle.title')}</h1>
-        <p className="page-header-desc">{t('lifecycle.subtitle')}</p>
+        <div>
+          <div className="page-eyebrow">{t('lifecycle.eyebrow')}</div>
+          <h1 className="page-title">{t('lifecycle.title')}</h1>
+          <p className="page-subtitle">{t('lifecycle.subtitle')}</p>
+        </div>
+        <Space>
+          <Button onClick={() => fetchData(false)} loading={syncing} icon={<span>🔄</span>}>
+            {syncing ? 'Syncing...' : 'Sync Gateway'}
+          </Button>
+          <Button onClick={autoCleanup}>Run Cleanup</Button>
+          <Tag color={autoConfig?.enabled ? 'green' : 'default'} style={{ cursor: 'pointer', padding: '4px 12px' }} onClick={toggleAutoCleanup}>
+            Auto: {autoConfig?.enabled ? 'ON' : 'OFF'}
+          </Tag>
+        </Space>
       </div>
 
       {/* Status Summary */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        {['ACTIVE', 'IDLE', 'STALE', 'ZOMBIE', 'COMPLETED', 'FAILED'].map(s => (
-          <div key={s} style={{
-            padding: '10px 16px', borderRadius: 'var(--radius-md)',
-            background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-            display: 'flex', alignItems: 'center', gap: 8, minWidth: 100,
-          }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLORS[s] }} />
-            <span style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>
-              {t(`lifecycle.status.${s.toLowerCase()}`)}
-            </span>
-            <span className="badge" style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-muted)', fontSize: 11 }}>
-              {statusCounts[s] || 0}
-            </span>
-          </div>
+      <Row gutter={[12, 12]}>
+        {statusCards.map(sc => (
+          <Col xs={8} sm={4} key={sc.key}>
+            <Card size="small" style={{ borderLeft: `3px solid ${sc.color}` }}>
+              <Statistic
+                title={<span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sc.key}</span>}
+                value={statusCounts[sc.key] || 0}
+                valueStyle={{ fontSize: 20, fontWeight: 700, color: sc.color }}
+              />
+            </Card>
+          </Col>
         ))}
-      </div>
+      </Row>
 
       {/* Actions Bar */}
       {selected.size > 0 && (
-        <div style={{
-          padding: '10px 16px', marginBottom: 16, borderRadius: 'var(--radius-md)',
-          background: 'var(--bg-surface)', border: '1px solid var(--status-blue)',
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-          <span style={{ color: 'var(--text-primary)', fontSize: 13 }}>
-            {selected.size} selected
-          </span>
-          <button className="btn btn-primary" onClick={cleanupSelected} style={{ fontSize: 13 }}>
-            {t('lifecycle.cleanupSelected')}
-          </button>
-          <button className="btn btn-secondary" onClick={() => setSelected(new Set())} style={{ fontSize: 13 }}>
-            {t('app.cancel')}
-          </button>
-        </div>
+        <Card size="small" style={{ borderColor: 'var(--status-blue)' }}>
+          <Space>
+            <Text>{selected.size} selected</Text>
+            <Button type="primary" onClick={cleanupSelected}>{t('lifecycle.cleanupSelected')}</Button>
+            <Button onClick={() => setSelected(new Set())}>{t('app.cancel')}</Button>
+          </Space>
+        </Card>
       )}
 
-      {/* Auto Cleanup */}
-      <div style={{
-        padding: 16, marginBottom: 16, borderRadius: 'var(--radius-md)',
-        background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-      }}>
-        <div>
-          <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 14, marginBottom: 2 }}>
-            {t('lifecycle.autoCleanup')}
-          </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('lifecycle.autoCleanupDesc')}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn btn-secondary" onClick={autoCleanup} style={{ fontSize: 12 }}>
-            Run Now
-          </button>
-          <button
-            onClick={toggleAutoCleanup}
-            style={{
-              padding: '6px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)',
-              background: autoConfig?.enabled ? 'var(--status-green)' : 'var(--bg-surface-hover)',
-              color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-            }}
-          >
-            {autoConfig?.enabled ? 'ON' : 'OFF'}
-          </button>
-        </div>
-      </div>
-
       {/* Agent Table */}
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-              <th style={{ padding: '10px 12px', textAlign: 'left' }}>
-                <input type="checkbox" checked={selected.size === agents.length && agents.length > 0} onChange={selectAll} />
-              </th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600 }}>{t('lifecycle.label')}</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600 }}>{t('lifecycle.status')}</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600 }}>{t('lifecycle.channel')}</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600 }}>{t('lifecycle.model')}</th>
-              <th style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)', fontWeight: 600 }}>{t('lifecycle.tokens')}</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600 }}>{t('lifecycle.lastActive')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {agents.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
-                {t('lifecycle.noAgents')}
-              </td></tr>
-            ) : agents.map(a => (
-              <tr key={a.session_key} style={{
-                borderBottom: '1px solid var(--border-color)',
-                background: selected.has(a.session_key) ? 'var(--bg-surface-hover)' : undefined,
-              }}>
-                <td style={{ padding: '10px 12px' }}>
-                  <input type="checkbox" checked={selected.has(a.session_key)} onChange={() => toggleSelect(a.session_key)} />
-                </td>
-                <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>
-                  <a href={`/sessions/${a.session_key}`} style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>
-                    {a.agent_label || a.agent_id || a.session_key}
-                  </a>
-                </td>
-                <td style={{ padding: '10px 12px' }}>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600,
-                    background: STATUS_COLORS[a.status] + '22', color: STATUS_COLORS[a.status],
-                  }}>
-                    {a.status}
-                  </span>
-                </td>
-                <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{a.channel || '-'}</td>
-                <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12 }}>{a.model || '-'}</td>
-                <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>
-                  {a.total_tokens > 0 ? a.total_tokens.toLocaleString() : '-'}
-                </td>
-                <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12 }}>
-                  {a.last_active_at ? new Date(a.last_active_at).toLocaleString() : '-'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {agents.length === 0 ? (
+        <Empty description={t('lifecycle.noAgents')} />
+      ) : (
+        <Card>
+          <Table
+            dataSource={agents}
+            columns={agentColumns}
+            rowKey="session_key"
+            size="middle"
+            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `${total} sessions` }}
+            rowSelection={{
+              selectedRowKeys: Array.from(selected),
+              onChange: (keys) => setSelected(new Set(keys as string[])),
+            }}
+          />
+        </Card>
+      )}
 
       {/* Cleanup History */}
       {logs.length > 0 && (
-        <div style={{ marginTop: 32 }}>
-          <h3 style={{ color: 'var(--text-primary)', fontSize: 16, marginBottom: 12 }}>{t('lifecycle.cleanupHistory')}</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-muted)' }}>{t('lifecycle.agent')}</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-muted)' }}>{t('lifecycle.status')}</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-muted)' }}>{t('lifecycle.action')}</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-muted)' }}>{t('lifecycle.detail')}</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-muted)' }}>{t('lifecycle.cleanedAt')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map(l => (
-                  <tr key={l.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)' }}>{l.agent_label || l.session_key}</td>
-                    <td style={{ padding: '8px 12px' }}>
-                      <span style={{ padding: '2px 6px', borderRadius: 'var(--radius-sm)', fontSize: 10, fontWeight: 600,
-                        background: STATUS_COLORS[l.lifecycle_state] + '22', color: STATUS_COLORS[l.lifecycle_state] }}>
-                        {l.lifecycle_state}
-                      </span>
-                    </td>
-                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{l.action}</td>
-                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {l.detail || '-'}
-                    </td>
-                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: 11 }}>
-                      {new Date(l.cleaned_at).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 24, right: 24, zIndex: 9999, padding: '12px 20px',
-          borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 500,
-          background: toast.ok ? 'var(--status-green)' : 'var(--status-red)',
-          color: '#fff', boxShadow: 'var(--shadow-lg)',
-        }} onClick={() => setToast(null)}>
-          {toast.msg}
-        </div>
+        <Card title={t('lifecycle.cleanupHistory')}>
+          <Table
+            dataSource={logs}
+            columns={logColumns}
+            rowKey="id"
+            size="small"
+            pagination={{ pageSize: 10 }}
+          />
+        </Card>
       )}
     </div>
   )

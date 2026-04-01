@@ -1,7 +1,8 @@
-"""Phase 5: Extensions management API — plugins list, status, toggle, tunnel status."""
+"""Extensions management API — plugins list, status, toggle, tunnel status."""
 
 import json, subprocess
 from pathlib import Path
+from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 
 from app.api.services import OPENCLAW_HOME
@@ -21,13 +22,18 @@ def _read_config() -> dict:
 
 
 def _write_config(cfg: dict):
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n")
 
 
-@router.get("/list")
+class ToggleBody(BaseModel):
+    enabled: bool
+
+
+@router.get("")
 def list_extensions():
+    """GET /api/extensions — return list of installed extensions."""
     cfg = _read_config()
-    plugins = cfg.get("plugins", {})
     entries = cfg.get("plugins", {}).get("entries", {})
     result = []
     for name, config in entries.items():
@@ -35,53 +41,47 @@ def list_extensions():
         result.append({
             "id": name,
             "name": name,
+            "description": config.get("description", ""),
+            "version": config.get("version", "0.0.0"),
             "enabled": is_enabled,
-            "type": config.get("type", "unknown"),
-            "config": {k: v for k, v in config.items() if k not in ("token", "secret", "password")},
+            "type": config.get("type", "plugin"),
         })
-    return {"extensions": result, "total": len(result)}
+    return result
 
 
-@router.get("/{ext_id}/status")
-def get_extension_status(ext_id: str):
-    cfg = _read_config()
-    entries = cfg.get("plugins", {}).get("entries", {})
-    if ext_id not in entries:
-        raise HTTPException(404, f"Extension '{ext_id}' not found")
-    config = entries[ext_id]
-    return {
-        "id": ext_id,
-        "enabled": not config.get("disabled", False),
-        "type": config.get("type", "unknown"),
-        "has_config": bool(config.get("config")),
+@router.get("/tunnel")
+def get_tunnel():
+    """GET /api/extensions/tunnel — check CFTunnel status."""
+    result = {
+        "status": "disconnected",
+        "url": "",
+        "bytesIn": 0,
+        "bytesOut": 0,
+        "available": False,
+        "running": False,
     }
-
-
-@router.post("/{ext_id}/toggle")
-def toggle_extension(ext_id: str):
-    cfg = _read_config()
-    entries = cfg.get("plugins", {}).get("entries", {})
-    if ext_id not in entries:
-        raise HTTPException(404, f"Extension '{ext_id}' not found")
-    currently_disabled = entries[ext_id].get("disabled", False)
-    entries[ext_id]["disabled"] = not currently_disabled
-    cfg.setdefault("plugins", {})["entries"] = entries
-    _write_config(cfg)
-    return {"ok": True, "id": ext_id, "enabled": currently_disabled, "message": f"Extension {'disabled' if currently_disabled else 'enabled'}"}
-
-
-@router.get("/tunnel/status")
-def get_tunnel_status():
-    """Check CFTunnel status if available."""
-    result = {"available": False, "running": False, "routes": []}
     try:
         r = subprocess.run(["which", "cftunnel"], capture_output=True, text=True, timeout=5)
         if r.returncode != 0:
             return result
         result["available"] = True
-        # Check if running
         r2 = subprocess.run(["pgrep", "-f", "cftunnel"], capture_output=True, text=True, timeout=5)
         result["running"] = bool(r2.stdout.strip())
+        if result["running"]:
+            result["status"] = "connected"
     except Exception:
         pass
     return result
+
+
+@router.patch("/{ext_id}")
+def toggle_extension(ext_id: str, body: ToggleBody):
+    """PATCH /api/extensions/:id — enable/disable an extension."""
+    cfg = _read_config()
+    entries = cfg.get("plugins", {}).get("entries", {})
+    if ext_id not in entries:
+        raise HTTPException(404, f"Extension '{ext_id}' not found")
+    entries[ext_id]["disabled"] = not body.enabled
+    cfg.setdefault("plugins", {})["entries"] = entries
+    _write_config(cfg)
+    return {"ok": True, "id": ext_id, "enabled": body.enabled}

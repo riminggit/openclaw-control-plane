@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { tasksApi } from '../api/modules/tasks'
 import { useTranslation } from 'react-i18next'
+import { Button, Tabs, Card, Empty, Spin, Popconfirm } from 'antd'
+
 
 export function TaskDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -69,19 +71,19 @@ export function TaskDetailPage() {
         <div className="card" style={{ marginBottom: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginRight: 'var(--space-2)' }}>{t('task_action.label')}：</span>
           {visibleActions.map(a => (
-            <button key={a.key} className={a.style} onClick={() => handleAction(a.key)}>{a.label}</button>
+            <Button key={a.key} className={a.style} onClick={() => handleAction(a.key)}>{a.label}</Button>
           ))}
           <div style={{ flex: 1 }} />
-          <button className="btn btn-danger" onClick={handleDelete}>🗑 {t('app.delete')}</button>
+          <Button danger onClick={handleDelete}>🗑 {t('app.delete')}</Button>
         </div>
       )}
 
       {/* Tabs */}
       <div className="tabs">
         {(['info', 'history'] as const).map(tab => (
-          <button key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+          <Button key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
             {tab === 'info' ? t('tasks.detail.info') : t('tasks.detail.status_history')}
-          </button>
+          </Button>
         ))}
       </div>
 

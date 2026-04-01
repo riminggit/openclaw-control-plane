@@ -23,8 +23,14 @@ def _safe_path(base: Path, user_path: str) -> Path:
 # ── Schemas ──
 
 class FileWrite(BaseModel):
+    agent: str = "main"
     path: str
     content: str
+
+
+class FileDelete(BaseModel):
+    agent: str = "main"
+    path: str
 
 
 # ── Endpoints ──
@@ -47,6 +53,51 @@ def list_files(agent: str = Query("main"), category: str = Query("memory")):
                 "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
             })
     return {"files": files, "base": str(base)}
+
+
+@router.get("/tree")
+def file_tree(agent: str = Query("main"), category: str = Query("memory")):
+    """Return file tree structure for the memory browser."""
+    base = WORKSPACE / category
+    if not base.exists():
+        return []
+    return _build_tree(base, base)
+
+
+def _build_tree(root: Path, current: Path) -> list[dict]:
+    """Recursively build a file tree from a directory."""
+    nodes = []
+    try:
+        items = sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+    except PermissionError:
+        return nodes
+    for item in items:
+        if item.name.startswith("."):
+            continue
+        rel = item.relative_to(root)
+        node = {"name": item.name, "path": str(rel), "type": "folder" if item.is_dir() else "file"}
+        if item.is_dir():
+            children = _build_tree(root, item)
+            if children:
+                node["children"] = children
+        nodes.append(node)
+    return nodes
+
+
+@router.get("/agents")
+def list_agents():
+    """List available agents by scanning workspace directories."""
+    ws = WORKSPACE
+    agents = []
+    # Check for agent workspace directories
+    if ws.exists():
+        for d in ws.iterdir():
+            if d.is_dir() and not d.name.startswith(".") and (d / "memory").exists():
+                agents.append(d.name)
+    # Always include main
+    if "main" not in agents:
+        agents.insert(0, "main")
+    return agents
 
 
 @router.get("/file")
@@ -77,16 +128,16 @@ def write_file(body: FileWrite):
 
 
 @router.delete("/file")
-def delete_file(path: str = Query(...)):
+def delete_file(body: FileDelete):
     """Delete a file from workspace."""
-    resolved = _safe_path(WORKSPACE, path)
+    resolved = _safe_path(WORKSPACE, body.path)
     if not resolved.exists():
         raise HTTPException(404, "File not found")
     if not resolved.is_file():
         raise HTTPException(400, "Not a file")
     try:
         resolved.unlink()
-        return {"ok": True, "path": path}
+        return {"ok": True, "path": body.path}
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -140,3 +191,9 @@ def export_memory(category: str = Query("memory")):
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename=memory-{category}-{ts}.zip"},
     )
+
+
+@router.get("")
+def memory_root():
+    """Root endpoint - returns memory file list."""
+    return list_files("main", "memory")

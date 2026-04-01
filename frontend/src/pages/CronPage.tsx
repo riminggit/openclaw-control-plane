@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCronJobs, useConnectionState } from '../hooks/useGateway'
 import { gatewayClient } from '../lib/gateway-client'
+import { Button, Input, Select, Table, Card, Empty, Spin, Popconfirm } from 'antd'
+
 
 type ScheduleType = 'cron' | 'at' | 'every'
 
@@ -118,42 +120,42 @@ export function CronPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+        <Button type="primary" onClick={() => setShowForm(!showForm)}>
           {showForm ? t('app.cancel') : `+ ${t('cron.new_job')}`}
-        </button>
-        <button className="btn btn-ghost" onClick={refetch} disabled={loading}>🔄</button>
+        </Button>
+        <Button type="text" onClick={refetch} disabled={loading}>🔄</Button>
       </div>
 
       {showForm && (
         <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
           <div className="card-header"><h2>{t('cron.create_job')}</h2></div>
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('cron.form_name')} />
+            <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('cron.form_name')} />
 
             <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
               <label style={{ fontWeight: 500, minWidth: 80 }}>{t('cron.schedule_type')}:</label>
-              <select className="form-input" value={form.scheduleType} onChange={e => setForm({ ...form, scheduleType: e.target.value as ScheduleType })} style={{ minWidth: 120 }}>
-                <option value="cron">Cron 表达式</option>
-                <option value="at">At 时间</option>
-                <option value="every">Every 间隔</option>
-              </select>
+              <Select className="form-input" value={form.scheduleType} onChange={e => setForm({ ...form, scheduleType: e as ScheduleType })} style={{ minWidth: 120 }}>
+                <Select.Option value="cron">Cron 表达式</Select.Option>
+                <Select.Option value="at">At 时间</Select.Option>
+                <Select.Option value="every">Every 间隔</Select.Option>
+              </Select>
             </div>
 
             {form.scheduleType === 'cron' && (
-              <input className="form-input" value={form.cronExpr} onChange={e => setForm({ ...form, cronExpr: e.target.value })} placeholder="55 8 * * 1-5" />
+              <Input value={form.cronExpr} onChange={e => setForm({ ...form, cronExpr: e.target.value })} placeholder="55 8 * * 1-5" />
             )}
             {form.scheduleType === 'at' && (
-              <input className="form-input" type="datetime-local" value={form.atTime} onChange={e => setForm({ ...form, atTime: e.target.value })} />
+              <Input type="datetime-local" value={form.atTime} onChange={e => setForm({ ...form, atTime: e.target.value })} />
             )}
             {form.scheduleType === 'every' && (
-              <input className="form-input" type="number" value={form.everyInterval} onChange={e => setForm({ ...form, everyInterval: e.target.value })} placeholder="30 (分钟)" min="1" />
+              <Input type="number" value={form.everyInterval} onChange={e => setForm({ ...form, everyInterval: e.target.value })} placeholder="30 (分钟)" min={1} />
             )}
 
-            <input className="form-input" value={form.agentId} onChange={e => setForm({ ...form, agentId: e.target.value })} placeholder="Agent ID (可选，默认 main)" />
-            <textarea className="form-input" value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="任务消息内容 (Agent Turn)" rows={3} />
+            <Input value={form.agentId} onChange={e => setForm({ ...form, agentId: e.target.value })} placeholder="Agent ID (可选，默认 main)" />
+            <Input.TextArea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="任务消息内容 (Agent Turn)" autoSize={{ minRows: 3, maxRows: 6 }} />
 
             {error && <div style={{ color: 'var(--status-red)', fontSize: 'var(--text-sm)' }}>{error}</div>}
-            <button className="btn btn-primary" onClick={handleCreate}>{t('app.create')}</button>
+            <Button type="primary" onClick={handleCreate}>{t('app.create')}</Button>
           </div>
         </div>
       )}
@@ -187,12 +189,12 @@ export function CronPage() {
                     <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{job.nextRun ? new Date(job.nextRun).toLocaleString() : '-'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                        <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)' }} onClick={() => handleToggle(job.id || job.jobId, job.enabled !== false)}>
+                        <Button type="text" style={{ fontSize: 'var(--text-xs)' }} onClick={() => handleToggle(job.id || job.jobId, job.enabled !== false)}>
                           {job.enabled !== false ? t('cron.disable') : t('cron.enable')}
-                        </button>
-                        <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)' }} onClick={() => handleTrigger(job.id || job.jobId)}>{t('cron.trigger')}</button>
-                        <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)' }} onClick={() => handleViewRuns(job.id || job.jobId)}>{t('cron.runs')}</button>
-                        <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', color: 'var(--status-red)' }} onClick={() => handleDelete(job.id || job.jobId)}>{t('app.delete')}</button>
+                        </Button>
+                        <Button type="text" style={{ fontSize: 'var(--text-xs)' }} onClick={() => handleTrigger(job.id || job.jobId)}>{t('cron.trigger')}</Button>
+                        <Button type="text" style={{ fontSize: 'var(--text-xs)' }} onClick={() => handleViewRuns(job.id || job.jobId)}>{t('cron.runs')}</Button>
+                        <Button type="text" style={{ fontSize: 'var(--text-xs)', color: 'var(--status-red)' }} onClick={() => handleDelete(job.id || job.jobId)}>{t('app.delete')}</Button>
                       </div>
                     </td>
                   </tr>
@@ -207,7 +209,7 @@ export function CronPage() {
         <div className="card" style={{ marginTop: 'var(--space-4)' }}>
           <div className="card-header">
             <h2>{t('cron.runs_history')}</h2>
-            <button className="btn btn-ghost" onClick={() => setShowRuns(null)}>✕</button>
+            <Button type="text" onClick={() => setShowRuns(null)}>✕</Button>
           </div>
           <div className="card-body" style={{ maxHeight: 300, overflow: 'auto' }}>
             {runs.length === 0 ? (

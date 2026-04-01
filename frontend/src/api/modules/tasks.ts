@@ -32,6 +32,17 @@ export const tasksApi = {
   update: (id: string, data: Record<string, string>) =>
     apiPut<TaskItem>(`/tasks/${id}`, data),
   delete: (id: string) => apiDelete(`/tasks/${id}`),
-  action: (id: string, action: string) =>
-    apiPost<TaskItem>(`/tasks/${id}/action`, { action }),
+  action: (id: string, action: string) => {
+    // Map action to status and priority changes
+    const statusMap: Record<string, { status?: string; priority?: string }> = {
+      start: { status: 'in_progress' },
+      review: { status: 'review' },
+      complete: { status: 'done' },
+      reject: { status: 'planned', priority: 'low' },
+      restart: { status: 'planned' },
+      block: { status: 'blocked' },
+    }
+    const updates = statusMap[action] || {}
+    return apiPut<TaskItem>(`/tasks/${id}`, updates)
+  },
 }

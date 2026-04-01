@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConnectionState } from '../hooks/useGateway'
+import { Button, Input, Modal, Card } from 'antd'
+
 
 interface ServiceStatus {
   running: boolean
@@ -63,14 +65,18 @@ export function ServicesPage() {
   const fetchBackups = useCallback(async () => {
     try {
       const res = await fetch(`${API}/backups`)
-      if (res.ok) setBackups(await res.json())
+      const raw = await res.json()
+      setBackups(Array.isArray(raw) ? raw : raw.backups || [])
     } catch { /* ignore */ }
   }, [])
 
   const fetchConfigHistory = useCallback(async () => {
     try {
       const res = await fetch(`${API}/config/history`)
-      if (res.ok) setConfigHistory(await res.json())
+      if (res.ok) {
+        const raw = await res.json()
+        setConfigHistory(Array.isArray(raw) ? raw : raw.history || [])
+      }
     } catch { /* ignore */ }
   }, [])
 
@@ -127,8 +133,8 @@ export function ServicesPage() {
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
         <p style={{ marginBottom: 'var(--space-4)' }}>{msg}</p>
         <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
-          <button className="btn btn-secondary" onClick={() => setConfirmAction(null)}>{t('app.cancel')}</button>
-          <button className="btn btn-danger" onClick={onConfirm}>{t('app.confirm', '确认')}</button>
+          <Button onClick={() => setConfirmAction(null)}>{t('app.cancel')}</Button>
+          <Button danger onClick={onConfirm}>{t('app.confirm', '确认')}</Button>
         </div>
       </div>
     </div>
@@ -185,9 +191,9 @@ export function ServicesPage() {
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-        <button className="btn btn-danger" onClick={() => setConfirmAction('restart')} disabled={!displayStatus.running}>
+        <Button danger onClick={() => setConfirmAction('restart')} disabled={!displayStatus.running}>
           {t('services.restart_gateway', '重启 Gateway')}
-        </button>
+        </Button>
       </div>
 
       {/* Config Editor */}
@@ -195,12 +201,12 @@ export function ServicesPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
           <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>{t('services.config_editor', '配置编辑器')}</h3>
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <button className={`btn ${showDiff ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setShowDiff(!showDiff)} disabled={!hasChanges} style={{ fontSize: 'var(--text-xs)' }}>
+            <Button className={`btn ${showDiff ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setShowDiff(!showDiff)} disabled={!hasChanges} style={{ fontSize: 'var(--text-xs)' }}>
               {t('services.diff_view', 'Diff 视图')}
-            </button>
-            <button className={`btn ${showHistory ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchConfigHistory() }} style={{ fontSize: 'var(--text-xs)' }}>
+            </Button>
+            <Button className={`btn ${showHistory ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchConfigHistory() }} style={{ fontSize: 'var(--text-xs)' }}>
               {t('services.config_history', '变更历史')}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -250,7 +256,7 @@ export function ServicesPage() {
           </div>
         )}
 
-        <textarea
+        <Input.TextArea
           value={config}
           onChange={e => setConfig(e.target.value)}
           style={{ width: '100%', minHeight: 300, fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)', resize: 'vertical' }}
@@ -260,10 +266,10 @@ export function ServicesPage() {
           <span className={`badge ${hasChanges ? 'badge-yellow' : 'badge-green'}`} style={{ fontSize: 'var(--text-xs)' }}>
             {hasChanges ? t('services.unsaved', '未保存') : t('services.saved', '已保存')}
           </span>
-          <button className="btn btn-primary" onClick={handleSave} disabled={!hasChanges || saving}>{t('app.save')}</button>
-          <button className="btn btn-secondary" onClick={handleSaveAndRestart} disabled={saving}>
+          <Button type="primary" onClick={handleSave} disabled={!hasChanges || saving}>{t('app.save')}</Button>
+          <Button onClick={handleSaveAndRestart} disabled={saving}>
             {saving ? t('app.saving') : t('services.save_and_restart', '保存并重启')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -271,7 +277,7 @@ export function ServicesPage() {
       <div className="card" style={{ padding: 'var(--space-4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
           <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>{t('services.backups', '配置备份')}</h3>
-          <button className="btn btn-secondary" onClick={handleCreateBackup}>{t('services.create_backup', '创建备份')}</button>
+          <Button onClick={handleCreateBackup}>{t('services.create_backup', '创建备份')}</Button>
         </div>
         {backups.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('services.no_backups', '暂无备份')}</p>
@@ -283,9 +289,9 @@ export function ServicesPage() {
                   <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>{b.timestamp}</div>
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{b.size}</div>
                 </div>
-                <button className="btn btn-secondary" onClick={() => setConfirmAction(`restore:${b.filename}`)} style={{ fontSize: 'var(--text-xs)' }}>
+                <Button onClick={() => setConfirmAction(`restore:${b.filename}`)} style={{ fontSize: 'var(--text-xs)' }}>
                   {t('services.restore', '恢复')}
-                </button>
+                </Button>
               </div>
             ))}
           </div>

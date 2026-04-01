@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConnectionState } from '../hooks/useGateway'
 import { gatewayClient } from '../lib/gateway-client'
+import { Button, Input, Tag, Card, Empty, Switch, Checkbox } from 'antd'
+
 
 interface ChatMsg {
   role: string
@@ -124,6 +126,10 @@ export function ChatPage() {
     setSearching(false)
   }
 
+  // Safely extract session key from various field names
+  const getSessionKey = (s: any): string | undefined =>
+    s?.key ?? s?.sessionKey ?? s?.id ?? undefined
+
   const handleBroadcast = async () => {
     if (!broadcastMsg.trim() || selectedSessions.size === 0) return
     try {
@@ -143,10 +149,17 @@ export function ChatPage() {
     } catch { /* */ }
   }
 
-  const toggleSessionSelect = (key: string) => {
+  const toggleSessionSelect = (key: string | undefined) => {
+    if (!key) return
     const next = new Set(selectedSessions)
     next.has(key) ? next.delete(key) : next.add(key)
     setSelectedSessions(next)
+  }
+
+  const selectAllSessions = () => {
+    const allKeys = broadcastSessions.map(getSessionKey).filter(Boolean) as string[]
+    const all = new Set(allKeys)
+    setSelectedSessions(all.size === selectedSessions.size && allKeys.every(k => selectedSessions.has(k)) ? new Set() : all)
   }
 
   if (connState !== 'connected') {
@@ -176,14 +189,14 @@ export function ChatPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 12, borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
         {tabs.map(tb => (
-          <button key={tb.key} onClick={() => switchTab(tb.key)} style={{
+          <Button key={tb.key} onClick={() => switchTab(tb.key)} style={{
             padding: '8px 16px', border: 'none', background: 'none', cursor: 'pointer',
             borderBottom: tab === tb.key ? '2px solid var(--status-blue)' : '2px solid transparent',
             color: tab === tb.key ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: tab === tb.key ? 600 : 400,
             fontSize: 13, transition: 'all 0.15s',
           }}>
             {tb.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -224,10 +237,10 @@ export function ChatPage() {
             <div ref={bottomRef} />
           </div>
           <div style={{ borderTop: '1px solid var(--border-color)', padding: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-            <input className="form-input" style={{ flex: 1 }} value={input} onChange={e => setInput(e.target.value)}
-              placeholder={t('chat.placeholder')} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()} disabled={sending} />
-            {sending && <button className="btn btn-danger" onClick={handleAbort} disabled={aborting}>{t('chat.abort')}</button>}
-            <button className="btn btn-primary" onClick={handleSend} disabled={sending || !input.trim()}>{t('chat.send')}</button>
+            <Input style={{ flex: 1 }} value={input} onChange={e => setInput(e.target.value)}
+              placeholder={t('chat.placeholder')} onPressEnter={e => !e.shiftKey && handleSend()} disabled={sending} />
+            {sending && <Button danger onClick={handleAbort} disabled={aborting}>{t('chat.abort')}</Button>}
+            <Button type="primary" onClick={handleSend} disabled={sending || !input.trim()}>{t('chat.send')}</Button>
           </div>
         </div>
       )}
@@ -261,9 +274,9 @@ export function ChatPage() {
         <div className="card" style={{ flex: 1, overflow: 'auto' }}>
           <div className="card-body">
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              <input className="form-input" style={{ flex: 1 }} value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                placeholder={t('chat.searchPlaceholder')} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-              <button className="btn btn-primary" onClick={handleSearch} disabled={searching}>{t('app.search')}</button>
+              <Input style={{ flex: 1 }} value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                placeholder={t('chat.searchPlaceholder')} onPressEnter={handleSearch} />
+              <Button type="primary" onClick={handleSearch} disabled={searching}>{t('app.search')}</Button>
             </div>
             {searchResults.length === 0 && searchQuery && !searching && (
               <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 32 }}>{t('chat.noResults')}</div>
@@ -294,29 +307,54 @@ export function ChatPage() {
                 ✓ Broadcast sent to {selectedSessions.size} sessions
               </div>
             )}
-            <h3 style={{ color: 'var(--text-primary)', fontSize: 14, marginBottom: 8 }}>{t('chat.selectSessions')}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <h3 style={{ color: 'var(--text-primary)', fontSize: 14, margin: 0 }}>{t('chat.selectSessions')}</h3>
+              {broadcastSessions.length > 0 && (
+                <Checkbox
+                  checked={broadcastSessions.length > 0 && broadcastSessions.every((s: any) => { const k = getSessionKey(s); return !!k && selectedSessions.has(k) })}
+                  indeterminate={broadcastSessions.some((s: any) => { const k = getSessionKey(s); return !!k && selectedSessions.has(k) }) && !broadcastSessions.every((s: any) => { const k = getSessionKey(s); return !!k && selectedSessions.has(k) })}
+                  onChange={selectAllSessions}
+                >
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('app.select_all', 'Select All')}</span>
+                </Checkbox>
+              )}
+            </div>
             <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 12, border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: 4 }}>
               {broadcastSessions.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', padding: 12, fontSize: 13 }}>No sessions</div>
-              ) : broadcastSessions.map((s: any) => (
-                <label key={s.key} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
-                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                  background: selectedSessions.has(s.key) ? 'var(--accent-bg, rgba(59,130,246,0.1))' : undefined,
-                }}>
-                  <input type="checkbox" checked={selectedSessions.has(s.key)} onChange={() => toggleSessionSelect(s.key)} />
-                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{s.label || s.key}</span>
-                </label>
-              ))}
+                <div style={{ color: 'var(--text-muted)', padding: 12, fontSize: 13 }}>{t('app.no_data')}</div>
+              ) : broadcastSessions.map((s: any, idx: number) => {
+                const sKey = getSessionKey(s)
+                return (
+                  <div key={sKey || idx} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: sKey && selectedSessions.has(sKey) ? 'var(--accent-bg, rgba(59,130,246,0.1))' : undefined,
+                  }}>
+                    <Checkbox
+                      checked={!!sKey && selectedSessions.has(sKey)}
+                      disabled={!sKey}
+                      onChange={() => toggleSessionSelect(sKey)}
+                    />
+                    <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+                      {s?.displayName || s?.label || sKey || `${t('app.no_data')} #${idx + 1}`}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
             {selectedSessions.size > 0 && (
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{selectedSessions.size} selected</div>
             )}
-            <textarea className="form-input" style={{ width: '100%', minHeight: 80, marginBottom: 8, resize: 'vertical' }}
-              value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)} placeholder={t('chat.broadcastMessage')} />
-            <button className="btn btn-primary" onClick={handleBroadcast} disabled={!broadcastMsg.trim() || selectedSessions.size === 0}>
+            <Input.TextArea
+              style={{ width: '100%', minHeight: 80, marginBottom: 8 }}
+              value={broadcastMsg}
+              onChange={e => setBroadcastMsg(e.target.value)}
+              placeholder={t('chat.broadcastMessage')}
+              autoSize={{ minRows: 3, maxRows: 6 }}
+            />
+            <Button type="primary" onClick={handleBroadcast} disabled={!broadcastMsg.trim() || selectedSessions.size === 0}>
               {t('chat.sendBroadcast')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

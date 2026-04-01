@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConnectionState } from '../hooks/useGateway'
+import { Button, Input, Tag, Table, Card } from 'antd'
+
 
 const API = '/api/security'
 
@@ -137,20 +139,20 @@ export function SecurityPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', maxWidth: 400 }}>
           <div>
             <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>{t('security.current_password')}</label>
-            <input type="password" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className="input" style={{ width: '100%' }} />
+            <Input.Password value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} style={{ width: '100%' }} />
           </div>
           <div>
             <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>{t('security.new_password')}</label>
-            <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} className="input" style={{ width: '100%' }} />
+            <Input.Password value={newPwd} onChange={e => setNewPwd(e.target.value)} style={{ width: '100%' }} />
             <PasswordStrengthBar strength={calcStrength(newPwd)} />
           </div>
           <div>
             <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>{t('security.confirm_password')}</label>
-            <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} className="input" style={{ width: '100%' }} />
+            <Input.Password value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} style={{ width: '100%' }} />
           </div>
-          <button className="btn btn-primary" onClick={handleChangePassword} disabled={saving || !currentPwd || !newPwd} style={{ alignSelf: 'flex-start' }}>
+          <Button type="primary" onClick={handleChangePassword} disabled={saving || !currentPwd || !newPwd} style={{ alignSelf: 'flex-start' }}>
             {saving ? t('app.saving') : t('app.save')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -158,8 +160,8 @@ export function SecurityPage() {
       <div className="card" style={{ padding: 'var(--space-4)' }}>
         <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--space-4)' }}>{t('security.ip_whitelist')}</h3>
         <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)', maxWidth: 400 }}>
-          <input value={newIp} onChange={e => setNewIp(e.target.value)} placeholder={t('security.ip_placeholder')} className="input" style={{ flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleAddIp()} />
-          <button className="btn btn-secondary" onClick={handleAddIp}>{t('app.create')}</button>
+          <Input value={newIp} onChange={e => setNewIp(e.target.value)} placeholder={t('security.ip_placeholder')} style={{ flex: 1 }} onPressEnter={handleAddIp} />
+          <Button onClick={handleAddIp}>{t('app.create')}</Button>
         </div>
         {whitelist.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('security.no_whitelist')}</p>
@@ -168,7 +170,7 @@ export function SecurityPage() {
             {whitelist.map(ip => (
               <div key={ip} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)' }}>
                 <code style={{ fontSize: 'var(--text-sm)' }}>{ip}</code>
-                <button className="btn btn-danger" onClick={() => handleRemoveIp(ip)} style={{ fontSize: 'var(--text-xs)' }}>{t('app.delete')}</button>
+                <Button danger onClick={() => handleRemoveIp(ip)} style={{ fontSize: 'var(--text-xs)' }}>{t('app.delete')}</Button>
               </div>
             ))}
           </div>
@@ -181,7 +183,7 @@ export function SecurityPage() {
           <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>{t('security.audit_logs')}</h3>
           <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
             {(['1h', '24h', '7d'] as const).map(r => (
-              <button key={r} className={`btn ${logRange === r ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setLogRange(r)} style={{ fontSize: 'var(--text-xs)' }}>{t(`security.range_${r}`)}</button>
+              <Button key={r} className={`btn ${logRange === r ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setLogRange(r)} style={{ fontSize: 'var(--text-xs)' }}>{t(`security.range_${r}`)}</Button>
             ))}
           </div>
         </div>

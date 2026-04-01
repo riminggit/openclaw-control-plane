@@ -318,7 +318,8 @@
     "dragSuccess": "操作成功",
     "dragFailed": "操作失败",
     "noCards": "暂无卡片",
-    "tokens": "tokens"
+    "tokens": "tokens",
+    "syncError": "同步失败"
   },
   "lifecycle": {
     "eyebrow": "Phase 4",

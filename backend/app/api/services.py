@@ -12,6 +12,20 @@ from app.db import SessionLocal, Base, engine
 
 router = APIRouter(prefix="/api/services")
 
+
+@router.get("")
+def list_services():
+    """Return summary list of all services."""
+    return {
+        "services": [
+            {"id": "gateway", "name": "OpenClaw Gateway", "status": "running" if _find_gateway_pid() else "stopped"},
+            {"id": "backend", "name": "Control Plane API", "status": "running"},
+            {"id": "web", "name": "Frontend UI", "status": "running"},
+        ],
+        "total": 3,
+    }
+
+
 OPENCLAW_HOME = Path.home() / ".openclaw"
 CONFIG_PATH = OPENCLAW_HOME / "openclaw.json"
 BACKUP_DIR = OPENCLAW_HOME / "backups"
@@ -291,3 +305,24 @@ def get_config_history(db: Session = Depends(_get_db), limit: int = Query(20, le
          "new_value_preview": e.new_value[:200] if e.new_value else None}
         for e in entries
     ]}
+
+
+# Frontend-compatible aliases
+@router.get("/backups")
+def list_backups_alias():
+    """Alias for /config/backups."""
+    return list_backups()
+
+@router.post("/backups")
+def backup_config_alias():
+    """Alias for POST /config/backup."""
+    return backup_config()
+
+@router.post("/backups/restore")
+def restore_config_alias(body: dict = None):
+    """Alias for POST /config/restore - expects JSON with filename."""
+
+    filename = (body or {}).get("filename", "")
+    if not filename:
+        raise HTTPException(400, "filename required")
+    return restore_config(filename)

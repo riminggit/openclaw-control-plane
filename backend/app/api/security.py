@@ -186,3 +186,32 @@ def get_security_info():
     return {"has_password": has_pw, "password_set_at": auth.get("updated_at"),
             "ip_whitelist_enabled": bool(auth.get("ip_whitelist")), "ip_whitelist": auth.get("ip_whitelist", []),
             "security_score": score, "risk_items": risks}
+
+
+@router.get("")
+def security_root():
+    """Root endpoint - returns overview info."""
+    return get_security_info()
+
+
+@router.get("/overview")
+def security_overview():
+    """Return security overview for dashboard widgets."""
+    auth = _read_auth()
+    has_pw = bool(auth.get("password_hash"))
+    is_default = False
+    strength = None
+    if has_pw:
+        # Check if password looks like default patterns
+        strength = "unknown"  # Can't check plaintext, report set status
+        risks = 1 if not auth.get("ip_whitelist") else 0
+    else:
+        is_default = True
+        strength = "none"
+        risks = 2  # no password + no whitelist
+    return {
+        "hasPassword": has_pw,
+        "isDefaultPassword": is_default,
+        "passwordStrength": strength,
+        "riskCount": risks,
+    }

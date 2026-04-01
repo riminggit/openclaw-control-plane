@@ -43,6 +43,16 @@ def _resolve_log_path(source: str) -> Path | None:
     return None
 
 
+@router.get("")
+def logs_root():
+    """Return log overview."""
+    available = []
+    for name, desc in KNOWN_SOURCES.items():
+        p = _resolve_log_path(name)
+        available.append({"source": name, "description": desc, "available": p is not None})
+    return {"sources": available, "log_dir": str(LOG_DIR)}
+
+
 @router.get("/sources")
 def list_sources():
     """List available log sources."""

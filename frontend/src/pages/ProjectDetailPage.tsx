@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { projectsApi, type ProjectItem } from '../api/modules/projects'
 import { useTranslation } from 'react-i18next'
+import { Table, Card, Empty } from 'antd'
+
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()

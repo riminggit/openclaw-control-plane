@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useConnectionState } from '../hooks/useGateway'
 import { gatewayClient } from '../lib/gateway-client'
+import { Button, Input, Select, Card, Empty, Spin } from 'antd'
+
 
 /** Render message content which can be string, array of content blocks, or other */
 function renderContent(content: any): string {
@@ -87,11 +89,11 @@ export function SessionDetailPage() {
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
-        <button className="btn btn-danger" onClick={handleAbort}>{t('session_detail.abort')}</button>
-        <button className="btn btn-ghost" onClick={fetchHistory}>🔄 {t('app.retry')}</button>
-        <button className="btn btn-secondary" onClick={() => { setEditModel(''); setEditThinking('off'); setEditing(!editing) }}>
+        <Button danger onClick={handleAbort}>{t('session_detail.abort')}</Button>
+        <Button type="text" onClick={fetchHistory}>🔄 {t('app.retry')}</Button>
+        <Button onClick={() => { setEditModel(''); setEditThinking('off'); setEditing(!editing) }}>
           {t('session_detail.edit_config')}
-        </button>
+        </Button>
       </div>
 
       {editing && (
@@ -99,16 +101,16 @@ export function SessionDetailPage() {
           <div className="card-body" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'end', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 200 }}>
               <label style={{ display: 'block', fontWeight: 500, marginBottom: 'var(--space-1)' }}>{t('session_detail.model')}</label>
-              <input className="form-input" style={{ width: '100%' }} value={editModel} onChange={e => setEditModel(e.target.value)} placeholder="model name" />
+              <Input style={{ width: '100%' }} value={editModel} onChange={e => setEditModel(e.target.value)} placeholder="model name" />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 500, marginBottom: 'var(--space-1)' }}>{t('session_detail.thinking')}</label>
-              <select className="form-input" value={editThinking} onChange={e => setEditThinking(e.target.value)}>
-                <option value="on">{t("app.on")}</option>
-                <option value="off">{t("app.off")}</option>
-              </select>
+              <Select className="form-input" value={editThinking} onChange={e => setEditThinking(e)}>
+                <Select.Option value="on">{t("app.on")}</Select.Option>
+                <Select.Option value="off">{t("app.off")}</Select.Option>
+              </Select>
             </div>
-            <button className="btn btn-primary" onClick={handlePatch}>{t('app.save')}</button>
+            <Button type="primary" onClick={handlePatch}>{t('app.save')}</Button>
           </div>
         </div>
       )}
@@ -147,8 +149,8 @@ export function SessionDetailPage() {
       {/* Send message */}
       <div className="card" style={{ marginTop: 'var(--space-4)' }}>
         <div className="card-body" style={{ display: 'flex', gap: 'var(--space-3)' }}>
-          <input className="form-input" style={{ flex: 1 }} value={inputMsg} onChange={e => setInputMsg(e.target.value)} placeholder={t('session_detail.send_placeholder')} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()} />
-          <button className="btn btn-primary" onClick={handleSend} disabled={sending || !inputMsg.trim()}>{sending ? '...' : t('session_detail.send')}</button>
+          <Input style={{ flex: 1 }} value={inputMsg} onChange={e => setInputMsg(e.target.value)} placeholder={t('session_detail.send_placeholder')} onPressEnter={e => !e.shiftKey && handleSend()} />
+          <Button type="primary" onClick={handleSend} disabled={sending || !inputMsg.trim()}>{sending ? '...' : t('session_detail.send')}</Button>
         </div>
       </div>
     </div>

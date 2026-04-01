@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentsMgmtApi, type Agent } from '../api/modules/agentsMgmt'
+import { Button, Input, Select, Modal, Tag, Table, Card, Empty, Switch, message, Checkbox, Row, Col, Space, Typography } from 'antd'
+import { RobotOutlined, EditOutlined, DeleteOutlined, SendOutlined, ExperimentOutlined } from '@ant-design/icons'
+
+const { Text, Paragraph } = Typography
+
 
 type ViewMode = 'card' | 'table'
 
@@ -127,10 +132,10 @@ export function AgentsPage() {
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
           <div style={{ display: 'flex', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', overflow: 'hidden' }}>
-            <button onClick={() => setViewMode('card')} style={{ padding: '6px 12px', background: viewMode === 'card' ? 'var(--accent-muted)' : 'transparent', border: 'none', color: viewMode === 'card' ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>📦</button>
-            <button onClick={() => setViewMode('table')} style={{ padding: '6px 12px', background: viewMode === 'table' ? 'var(--accent-muted)' : 'transparent', border: 'none', color: viewMode === 'table' ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>📋</button>
+            <Button onClick={() => setViewMode('card')} style={{ padding: '6px 12px', background: viewMode === 'card' ? 'var(--accent-muted)' : 'transparent', border: 'none', color: viewMode === 'card' ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>📦</Button>
+            <Button onClick={() => setViewMode('table')} style={{ padding: '6px 12px', background: viewMode === 'table' ? 'var(--accent-muted)' : 'transparent', border: 'none', color: viewMode === 'table' ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>📋</Button>
           </div>
-          <button className="btn btn-primary" onClick={openCreate}>+ {t('agents_mgmt.add_agent')}</button>
+          <Button type="primary" onClick={openCreate}>+ {t('agents_mgmt.add_agent')}</Button>
         </div>
       </div>
 
@@ -139,37 +144,52 @@ export function AgentsPage() {
       ) : agents.length === 0 ? (
         <div className="empty-state"><div className="empty-state-icon">🤖</div><div className="empty-state-title">{t('agents_mgmt.no_agents')}</div><div className="empty-state-desc">{t('agents_mgmt.create_hint')}</div></div>
       ) : viewMode === 'card' ? (
-        <div className="card-grid">
+        <Row gutter={[16, 16]}>
           {agents.map((agent) => (
-            <div key={agent.id} className="card" style={{ cursor: 'pointer' }} onClick={() => openEdit(agent)}>
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: agent.status === 'online' ? 'var(--status-green)' : 'var(--status-gray)', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 'var(--text-lg)' }}>{agent.name}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{agent.id}</div>
+            <Col xs={24} sm={12} lg={8} xl={6} key={agent.id}>
+              <Card
+                hoverable
+                onClick={() => openEdit(agent)}
+                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column', gap: 12, padding: 16 } }}
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <RobotOutlined style={{ fontSize: 20, color: agent.status === 'online' ? '#52c41a' : '#8c8c8c' }} />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 15 }}>{agent.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{agent.id.slice(0, 12)}...</div>
+                    </div>
+                  </div>
+                  <Space size={4} onClick={e => e.stopPropagation()}>
+                    <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(agent)} />
+                    <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => setDeleteConfirm(agent.id)} />
+                  </Space>
+                </div>
+
+                {/* Description */}
+                <Paragraph
+                  type="secondary"
+                  ellipsis={{ rows: 2 }}
+                  style={{ margin: 0, fontSize: 13, flex: 1 }}
+                >
+                  {agent.description || agent.systemPrompt?.slice(0, 100) || '—'}
+                </Paragraph>
+
+                {/* Footer */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                  <Tag color="blue">{agent.model}</Tag>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {(agent.channels || []).map(ch => (
+                      <Tag key={ch} style={{ fontSize: 11 }}>{CHANNEL_ICONS[ch] || ''} {ch}</Tag>
+                    ))}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 'var(--space-2)' }} onClick={e => e.stopPropagation()}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm(agent.id)} title={t('app.delete')}>🗑️</button>
-                </div>
-              </div>
-              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', margin: 'var(--space-3) 0', lineHeight: 1.4 }}>
-                {agent.description || agent.systemPrompt?.slice(0, 100) || '—'}
-              </div>
-              <div className="card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--border-default)' }}>
-                <span className="badge" style={{ background: 'var(--accent-muted)', color: 'var(--accent)' }}>{agent.model}</span>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {(agent.channels || []).map(ch => (
-                    <span key={ch} className="badge" style={{ background: 'var(--bg-surface-active)', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>
-                      {CHANNEL_ICONS[ch] || ''} {ch}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
+              </Card>
+            </Col>
           ))}
-        </div>
+        </Row>
       ) : (
         <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
@@ -198,7 +218,7 @@ export function AgentsPage() {
                   </td>
                   <td style={{ padding: 'var(--space-3) var(--space-4)', color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>{agent.updatedAt || '—'}</td>
                   <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); setDeleteConfirm(agent.id) }}>🗑️</button>
+                    <Button type="text" size="small" onClick={e => { e.stopPropagation(); setDeleteConfirm(agent.id) }}>🗑️</Button>
                   </td>
                 </tr>
               ))}
@@ -213,7 +233,7 @@ export function AgentsPage() {
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
             <div className="modal-header">
               <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>{editingAgent ? t('agents_mgmt.edit_agent') : t('agents_mgmt.add_agent')}</h2>
-              <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>✕</button>
+              <Button type="text" onClick={() => setModalOpen(false)}>✕</Button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               {!editingAgent && (
@@ -221,39 +241,39 @@ export function AgentsPage() {
                   <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--space-2)' }}>{t('agents_mgmt.template')}</label>
                   <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                     {AGENT_TEMPLATES.map((tpl, i) => (
-                      <button key={i} className="btn btn-ghost btn-sm" onClick={() => applyTemplate(tpl)} style={{ border: '1px solid var(--border-default)' }}>{tpl.name}</button>
+                      <Button key={i} className="btn btn-ghost btn-sm" onClick={() => applyTemplate(tpl)} style={{ border: '1px solid var(--border-default)' }}>{tpl.name}</Button>
                     ))}
                   </div>
                 </div>
               )}
               <div>
                 <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--space-2)' }}>{t('agents_mgmt.field_name')} *</label>
-                <input className="input" value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('agents_mgmt.name_placeholder')} />
+                <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('agents_mgmt.name_placeholder')} />
               </div>
               <div>
                 <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--space-2)' }}>{t('agents_mgmt.field_desc')}</label>
-                <input className="input" value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder={t('agents_mgmt.desc_placeholder')} />
+                <Input value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder={t('agents_mgmt.desc_placeholder')} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 'var(--space-4)', alignItems: 'end' }}>
                 <div>
                   <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--space-2)' }}>{t('agents_mgmt.field_model')}</label>
-                  <select className="input" value={formModel} onChange={e => setFormModel(e.target.value)}>
-                    {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                  <Select value={formModel} onChange={e => setFormModel(e)}>
+                    {MODELS.map(m => <Select.Option key={m} value={m}>{m}</Select.Option>)}
+                  </Select>
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={formThinking} onChange={e => setFormThinking(e.target.checked)} />
+                  <Checkbox checked={formThinking} onChange={(v: any) => setFormThinking(v.checked)} />
                   Thinking
                 </label>
               </div>
               <div>
                 <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--space-2)' }}>{t('agents_mgmt.field_prompt')}</label>
-                <textarea className="input" value={formPrompt} onChange={e => setFormPrompt(e.target.value)} rows={5} placeholder={t('agents_mgmt.prompt_placeholder')} style={{ resize: 'vertical' }} />
+                <Input.TextArea value={formPrompt} onChange={e => setFormPrompt(e.target.value)} rows={5} placeholder={t('agents_mgmt.prompt_placeholder')} style={{ resize: 'vertical' }} />
               </div>
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', padding: 'var(--space-4)', borderTop: '1px solid var(--border-default)' }}>
-              <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>{t('app.cancel')}</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={!formName.trim() || saving}>{saving ? t('app.saving') : t('app.save')}</button>
+              <Button type="text" onClick={() => setModalOpen(false)}>{t('app.cancel')}</Button>
+              <Button type="primary" onClick={handleSave} disabled={!formName.trim() || saving}>{saving ? t('app.saving') : t('app.save')}</Button>
             </div>
           </div>
         </div>
@@ -269,8 +289,8 @@ export function AgentsPage() {
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('agents_mgmt.confirm_delete_desc')}</p>
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-3)', padding: 'var(--space-4)', borderTop: '1px solid var(--border-default)' }}>
-              <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>{t('app.cancel')}</button>
-              <button className="btn" style={{ background: 'var(--status-red)', color: '#fff' }} onClick={() => handleDelete(deleteConfirm)}>{t('app.delete')}</button>
+              <Button type="text" onClick={() => setDeleteConfirm(null)}>{t('app.cancel')}</Button>
+              <Button className="btn" style={{ background: 'var(--status-red)', color: '#fff' }} onClick={() => handleDelete(deleteConfirm)}>{t('app.delete')}</Button>
             </div>
           </div>
         </div>
@@ -282,10 +302,10 @@ export function AgentsPage() {
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="modal-header">
               <h2 style={{ fontSize: 'var(--text-lg)' }}>🧪 {t('agents_mgmt.test_agent')}</h2>
-              <button className="btn btn-ghost" onClick={() => { setTestingId(null); setTestResult(null) }}>✕</button>
+              <Button type="text" onClick={() => { setTestingId(null); setTestResult(null) }}>✕</Button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              <textarea className="input" value={testMsg} onChange={e => setTestMsg(e.target.value)} rows={3} placeholder={t('agents_mgmt.test_placeholder')} />
+              <Input.TextArea value={testMsg} onChange={e => setTestMsg(e.target.value)} rows={3} placeholder={t('agents_mgmt.test_placeholder')} />
               {testResult && testResult.agentId === testingId && (
                 <div style={{ background: 'var(--bg-surface-active)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)', fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>
                   {testResult.result}
@@ -293,8 +313,8 @@ export function AgentsPage() {
               )}
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', padding: 'var(--space-4)', borderTop: '1px solid var(--border-default)' }}>
-              <button className="btn btn-ghost" onClick={() => { setTestingId(null); setTestResult(null) }}>{t('app.cancel')}</button>
-              <button className="btn btn-primary" onClick={() => handleTest(testingId)} disabled={!testMsg.trim()}>{t('agents_mgmt.send_test')}</button>
+              <Button type="text" onClick={() => { setTestingId(null); setTestResult(null) }}>{t('app.cancel')}</Button>
+              <Button type="primary" onClick={() => handleTest(testingId)} disabled={!testMsg.trim()}>{t('agents_mgmt.send_test')}</Button>
             </div>
           </div>
         </div>

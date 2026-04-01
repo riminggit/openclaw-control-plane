@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button, Input, Select, Card, Popconfirm } from 'antd'
+
 
 interface FileNode {
   name: string
@@ -24,6 +26,8 @@ export function MemoryPage() {
   const [previewMode, setPreviewMode] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  const treeBase = 'memory'
+
   const fetchTree = useCallback(async (agent: string) => {
     try {
       const res = await fetch(`${API}/tree?agent=${encodeURIComponent(agent)}`)
@@ -45,31 +49,35 @@ export function MemoryPage() {
     Promise.all([fetchTree(selectedAgent), fetchAgents()]).finally(() => setLoading(false))
   }, [selectedAgent])
 
+  // Tree returns paths relative to WORKSPACE/memory, but /memory/file resolves against WORKSPACE
+  // So we need to prefix with 'memory/' when calling file API
+  const filePath = selectedFile ? `memory/${selectedFile}` : null
+
   useEffect(() => {
-    if (!selectedFile) return
+    if (!filePath) return
     setLoading(true)
-    fetch(`${API}/file?agent=${encodeURIComponent(selectedAgent)}&path=${encodeURIComponent(selectedFile)}`)
-      .then(r => r.ok ? r.text() : '')
-      .then(text => { setFileContent(text); setOriginalContent(text) })
+    fetch(`${API}/file?path=${encodeURIComponent(filePath)}`)
+      .then(r => r.ok ? r.json() : Promise.resolve(null))
+      .then(data => { const text = data?.content ?? ''; setFileContent(text); setOriginalContent(text) })
       .catch(() => { setFileContent(''); setOriginalContent('') })
       .finally(() => setLoading(false))
-  }, [selectedFile, selectedAgent])
+  }, [filePath])
 
   const handleSave = async () => {
-    if (!selectedFile) return
+    if (!filePath) return
     setSaving(true)
     try {
-      await fetch(`${API}/file`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: selectedAgent, path: selectedFile, content: fileContent }) })
+      await fetch(`${API}/file`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: filePath, content: fileContent }) })
       setOriginalContent(fileContent)
     } catch { /* ignore */ }
     setSaving(false)
   }
 
   const handleDelete = async () => {
-    if (!selectedFile) return
+    if (!filePath) return
     if (!confirm(t('memory.confirm_delete', '确定要删除此文件吗？'))) return
     try {
-      await fetch(`${API}/file`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: selectedAgent, path: selectedFile }) })
+      await fetch(`${API}/file`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: filePath }) })
       setSelectedFile(null); setFileContent(''); setOriginalContent('')
       fetchTree(selectedAgent)
     } catch { /* ignore */ }
@@ -78,10 +86,10 @@ export function MemoryPage() {
   const handleNewFile = async () => {
     const name = prompt(t('memory.new_file_prompt', '新文件名:'))
     if (!name) return
-    const path = selectedFile ? selectedFile.substring(0, selectedFile.lastIndexOf('/')) : 'memory'
-    const fullPath = `${path}/${name}`
+    const parentDir = selectedFile ? selectedFile.substring(0, selectedFile.lastIndexOf('/')) : ''
+    const fullPath = parentDir ? `${parentDir}/${name}` : name
     try {
-      await fetch(`${API}/file`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: selectedAgent, path: fullPath, content: '' }) })
+      await fetch(`${API}/file`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: `memory/${fullPath}`, content: '' }) })
       fetchTree(selectedAgent)
       setSelectedFile(fullPath)
     } catch { /* ignore */ }
@@ -140,17 +148,17 @@ export function MemoryPage() {
           <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 600 }}>{t('memory.title', 'Memory 浏览器')}</h1>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-          <select value={selectedAgent} onChange={e => { setSelectedAgent(e.target.value); setSelectedFile(null) }} style={{ padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
-            {agents.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <button className="btn btn-secondary" onClick={handleExportZip} style={{ fontSize: 'var(--text-xs)' }}>{t('memory.export_zip', '导出 ZIP')}</button>
+          <Select value={selectedAgent} onChange={e => { setSelectedAgent(e); setSelectedFile(null) }} style={{ padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
+            {agents.map(a => <Select.Option key={a} value={a}>{a}</Select.Option>)}
+          </Select>
+          <Button onClick={handleExportZip} style={{ fontSize: 'var(--text-xs)' }}>{t('memory.export_zip', '导出 ZIP')}</Button>
         </div>
       </div>
 
       {/* Search */}
       <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} placeholder={t('memory.search_placeholder', '搜索文件内容...')} style={{ flex: 1, padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }} />
-        <button className="btn btn-secondary" onClick={handleSearch}>{t('app.search')}</button>
+        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} placeholder={t('memory.search_placeholder', '搜索文件内容...')} style={{ flex: 1 }} />
+        <Button onClick={handleSearch}>{t('app.search')}</Button>
       </div>
       {searchResults.length > 0 && (
         <div style={{ maxHeight: 150, overflow: 'auto', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', padding: 'var(--space-2)' }}>
@@ -179,13 +187,13 @@ export function MemoryPage() {
               <span className={`badge ${hasChanges ? 'badge-yellow' : 'badge-green'}`} style={{ fontSize: 'var(--text-xs)' }}>
                 {hasChanges ? t('services.unsaved', '未保存') : t('services.saved', '已保存')}
               </span>
-              <button className="btn btn-secondary" onClick={() => setPreviewMode(!previewMode)} style={{ fontSize: 'var(--text-xs)' }}>
+              <Button onClick={() => setPreviewMode(!previewMode)} style={{ fontSize: 'var(--text-xs)' }}>
                 {previewMode ? t('memory.edit_mode', '编辑') : t('memory.preview_mode', '预览')}
-              </button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={!hasChanges || saving} style={{ fontSize: 'var(--text-xs)' }}>{t('app.save')}</button>
-              <button className="btn btn-secondary" onClick={handleNewFile} style={{ fontSize: 'var(--text-xs)' }}>{t('memory.new_file', '新建')}</button>
-              <button className="btn btn-danger" onClick={handleDelete} style={{ fontSize: 'var(--text-xs)' }}>{t('app.delete')}</button>
-              <button className="btn btn-secondary" onClick={handleDownload} style={{ fontSize: 'var(--text-xs)' }}>{t('memory.download', '下载')}</button>
+              </Button>
+              <Button type="primary" onClick={handleSave} disabled={!hasChanges || saving} style={{ fontSize: 'var(--text-xs)' }}>{t('app.save')}</Button>
+              <Button onClick={handleNewFile} style={{ fontSize: 'var(--text-xs)' }}>{t('memory.new_file', '新建')}</Button>
+              <Button danger onClick={handleDelete} style={{ fontSize: 'var(--text-xs)' }}>{t('app.delete')}</Button>
+              <Button onClick={handleDownload} style={{ fontSize: 'var(--text-xs)' }}>{t('memory.download', '下载')}</Button>
             </div>
           )}
           <div style={{ flex: 1, overflow: 'auto', padding: 'var(--space-3)' }}>
@@ -194,7 +202,7 @@ export function MemoryPage() {
             ) : previewMode ? (
               <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>{fileContent}</pre>
             ) : (
-              <textarea
+              <Input.TextArea
                 value={fileContent}
                 onChange={e => setFileContent(e.target.value)}
                 style={{ width: '100%', height: '100%', minHeight: 350, fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', background: 'transparent', color: 'var(--text-primary)', border: 'none', resize: 'none', outline: 'none' }}

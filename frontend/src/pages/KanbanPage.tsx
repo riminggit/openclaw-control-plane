@@ -4,265 +4,506 @@ import { tasksApi, type TaskItem } from '../api/modules/tasks'
 import { gatewayClient } from '../lib/gateway-client'
 import { useConnectionState } from '../hooks/useGateway'
 import { useTranslation } from 'react-i18next'
+import { Button, Input, Checkbox, Popconfirm, message, Modal, Form, Select, Progress, Spin } from 'antd'
+import { CaretRightOutlined, ClockCircleOutlined } from '@ant-design/icons'
 
 // ── Types ──
 
-interface KanbanCard {
-  source: 'gateway-session' | 'gateway-cron' | 'local'
-  type: 'session' | 'cron' | 'task'
-  cardId: string
-  label: string
-  channel: string
-  status: string
-  column: string
-  totalTokens: number
-  updatedAt: string
-  extra?: any
+interface CronJob {
+  id: string
+  name: string
+  schedule: any
+  enabled: boolean
+  running: boolean
+  nextRun?: string
 }
 
-const SOURCE_COLORS: Record<string, string> = {
-  'gateway-session': '#06b6d4',  // cyan
-  'gateway-cron': '#f59e0b',     // amber
-  'local': '#6b7280',            // gray
+interface RunningTask {
+  taskId: string
+  title: string
+  agentId?: string
+  startedAt: number
+  status: string // 'running' | 'completed' | 'error'
+  progress: number // 0-100
+  step?: string
+  elapsed: string
 }
 
-const KANBAN_COLUMNS = [
+type TaskStatus = 'planned' | 'running' | 'in_progress' | 'review' | 'blocked' | 'done'
+
+const TASK_COLUMNS: { id: TaskStatus; color: string }[] = [
   { id: 'planned', color: 'var(--text-muted)' },
+  { id: 'running', color: 'var(--status-blue)' },
   { id: 'in_progress', color: 'var(--status-blue)' },
   { id: 'review', color: 'var(--status-yellow)' },
   { id: 'blocked', color: 'var(--status-red)' },
   { id: 'done', color: 'var(--status-green)' },
 ]
 
-// ── Mappers ──
-
-function sessionToCard(s: any): KanbanCard {
-  const result = s.result || ''
-  const status = s.status || s.state || 'running'
-  let column = 'in_progress'
-  if (result === 'completed' || status === 'completed') column = 'done'
-  else if (result === 'failed' || result === 'error') column = 'done'
-  else if (status === 'running' || status === 'active') {
-    const ua = s.updatedAt || s.updated_at || ''
-    if (ua) {
-      try {
-        const mins = (Date.now() - new Date(ua).getTime()) / 60000
-        if (mins > 5) column = 'planned'
-      } catch { /* ignore */ }
-    }
-  } else column = 'planned'
-
-  return {
-    source: 'gateway-session', type: 'session',
-    cardId: s.key || s.sessionKey || '',
-    label: s.label || s.key || '',
-    channel: s.channel || '', status: result || status, column,
-    totalTokens: s.totalTokens || 0, updatedAt: s.updatedAt || s.updated_at || '',
-    extra: s,
-  }
-}
-
-function cronToCard(c: any): KanbanCard {
-  const enabled = c.enabled !== false
-  const running = !!c.running
-  let column = 'planned'
-  if (!enabled) column = 'blocked'
-  else if (running) column = 'in_progress'
-
-  return {
-    source: 'gateway-cron', type: 'cron',
-    cardId: c.id || c.jobId || '',
-    label: c.label || c.name || c.id || '',
-    channel: '', status: enabled ? 'active' : 'disabled', column,
-    totalTokens: 0, updatedAt: c.nextRunAt || c.updatedAt || '',
-    extra: c,
-  }
-}
-
-function taskToCard(t: TaskItem): KanbanCard {
-  const statusMap: Record<string, string> = {
-    planned: 'planned', in_progress: 'in_progress', review: 'review',
-    blocked: 'blocked', done: 'done',
-  }
-  return {
-    source: 'local', type: 'task',
-    cardId: t.id, label: t.title,
-    channel: t.ownerRole || '', status: t.status,
-    column: statusMap[t.status] || 'planned',
-    totalTokens: 0, updatedAt: t.updatedAt,
-    extra: t,
-  }
-}
-
 // ── Toast ──
 
-function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
+function Toast({ msg, type, onClose }: { msg: string; type: 'success' | 'error'; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t) }, [onClose])
   return (
     <div style={{
       position: 'fixed', bottom: 24, right: 24, zIndex: 9999, padding: '12px 20px',
       borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 500,
       background: type === 'success' ? 'var(--status-green)' : 'var(--status-red)',
-      color: '#fff', boxShadow: 'var(--shadow-lg)', opacity: 0.95,
+      color: '#fff', boxShadow: 'var(--shadow-lg)',
+    }}>{msg}</div>
+  )
+}
+
+// ── Elapsed timer ──
+
+function useElapsedTime(startedAt: number): string {
+  const [elapsed, setElapsed] = useState('')
+  useEffect(() => {
+    const update = () => {
+      const diff = Math.floor((Date.now() - startedAt) / 1000)
+      const m = Math.floor(diff / 60)
+      const s = diff % 60
+      setElapsed(`${m}:${s.toString().padStart(2, '0')}`)
+    }
+    update()
+    const id = setInterval(update, 1000)
+    return () => clearInterval(id)
+  }, [startedAt])
+  return elapsed
+}
+
+// ── Task Card ──
+
+function TaskCard({ task, onDelete, selected, onToggleSelect, isDragging, onExecute, isExecuting, selectMode }: {
+  task: TaskItem; onDelete: (id: string) => void; selected: boolean; onToggleSelect: () => void; isDragging: boolean
+  onExecute?: () => void; isExecuting?: boolean; selectMode?: boolean
+}) {
+  const { t } = useTranslation()
+  const priorityColor: Record<string, string> = { high: 'var(--status-red)', medium: 'var(--status-yellow)', low: 'var(--status-green)' }
+  return (
+    <div style={{
+      background: selected ? 'var(--accent-bg, rgba(59,130,246,0.08))' : 'var(--bg-surface)',
+      border: '1px solid var(--border-color)', borderLeft: `3px solid ${priorityColor[task.priority] || 'var(--text-muted)'}`,
+      borderRadius: 'var(--radius-lg)', padding: 'var(--space-3)', marginBottom: 'var(--space-2)',
+      opacity: isDragging ? 0.85 : 1, boxShadow: isDragging ? 'var(--shadow-lg)' : undefined,
+      cursor: 'grab',
     }}>
-      {message}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        {selectMode && (
+          <Checkbox checked={selected} onClick={e => { e.stopPropagation(); onToggleSelect() }} style={{ marginTop: 2 }} />
+        )}
+        <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 'var(--text-sm)', flex: 1, lineHeight: 1.4 }}>
+          {task.title}
+        </span>
+        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          {onExecute && task.status !== 'done' && (
+            <Button
+              type="text"
+              size="small"
+              icon={isExecuting ? <Spin size="small" /> : <CaretRightOutlined />}
+              onClick={e => { e.stopPropagation(); onExecute() }}
+              style={{ minWidth: 28, padding: '0 4px', fontSize: 12, color: 'var(--status-blue)' }}
+              title={t('kanban.execute', '执行')}
+            />
+          )}
+          <Popconfirm title={t('app.confirm_delete', '确定删除此任务？')} onConfirm={e => { e?.stopPropagation(); onDelete(task.id) }} okText={t('app.delete')} cancelText={t('app.cancel')}>
+            <Button type="text" danger size="small" onClick={e => e.stopPropagation()} style={{ minWidth: 24, padding: '0 4px', fontSize: 12 }}>✕</Button>
+          </Popconfirm>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
+        {task.priority && (
+          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-sm)', background: (priorityColor[task.priority] || '#6b7280') + '22', color: priorityColor[task.priority] || '#6b7280' }}>
+            {task.priority}
+          </span>
+        )}
+        {task.ownerRole && (
+          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface-hover)', color: 'var(--text-muted)' }}>
+            {task.ownerRole}
+          </span>
+        )}
+        {task.category && (
+          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface-hover)', color: 'var(--text-muted)' }}>
+            {task.category}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
 
-// ── Component ──
+// ── Running Task Card ──
+
+function RunningTaskCard({ rt }: { rt: RunningTask }) {
+  const { t } = useTranslation()
+  const elapsed = useElapsedTime(rt.startedAt)
+  return (
+    <div style={{
+      background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
+      borderLeft: '3px solid var(--status-blue)', borderRadius: 'var(--radius-lg)',
+      padding: 'var(--space-3)', marginBottom: 'var(--space-2)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 'var(--text-sm)', flex: 1 }}>
+          {rt.title}
+        </span>
+        {rt.status === 'running' && <Spin size="small" />}
+        {rt.status === 'completed' && <span style={{ color: 'var(--status-green)', fontSize: 12 }}>✓</span>}
+        {rt.status === 'error' && <span style={{ color: 'var(--status-red)', fontSize: 12 }}>✕</span>}
+      </div>
+      <Progress percent={rt.progress} size="small" strokeColor={rt.status === 'error' ? 'var(--status-red)' : undefined} />
+      {rt.step && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{rt.step}</div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <ClockCircleOutlined /> {elapsed}
+        </span>
+        {rt.agentId && (
+          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface-hover)', color: 'var(--text-muted)' }}>
+            {rt.agentId}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Cron Card ──
+
+function CronCard({ job, onToggle, onTrigger, onDelete }: { job: CronJob; onToggle: (id: string, enabled: boolean) => void; onTrigger: (id: string) => void; onDelete: (id: string) => void }) {
+  const { t } = useTranslation()
+  const formatSchedule = (s: any) => {
+    if (!s) return '-'
+    if (typeof s === 'string') return s
+    if (s.kind === 'cron') return `${s.expr} (${s.tz || 'UTC'})`
+    if (s.kind === 'at') return `at ${s.at}`
+    if (s.kind === 'every') return `every ${s.everyMs ? `${Math.round(s.everyMs / 60000)}min` : '-'}`
+    return JSON.stringify(s)
+  }
+  return (
+    <div style={{
+      background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderLeft: '3px solid #f59e0b',
+      borderRadius: 'var(--radius-lg)', padding: 'var(--space-3)', marginBottom: 'var(--space-2)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>{job.name || job.id}</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 4 }}>
+            {formatSchedule(job.schedule)}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <Button type="text" size="small" onClick={() => onTrigger(job.id)} style={{ fontSize: 12 }}>▶</Button>
+          <Button
+            type="text" size="small"
+            onClick={() => onToggle(job.id, job.enabled)}
+            style={{ fontSize: 12, color: job.enabled ? 'var(--status-green)' : 'var(--text-muted)' }}
+          >
+            {job.enabled ? '●' : '○'}
+          </Button>
+          <Popconfirm title={t('app.confirm_delete', '确定删除此定时任务？')} onConfirm={() => onDelete(job.id)} okText={t('app.delete')} cancelText={t('app.cancel')}>
+            <Button type="text" danger size="small" onClick={e => e.stopPropagation()} style={{ minWidth: 24, padding: '0 4px', fontSize: 12 }}>✕</Button>
+          </Popconfirm>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        <span style={{
+          fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-sm)',
+          background: job.enabled ? 'rgba(34,197,94,0.15)' : 'rgba(107,114,128,0.15)',
+          color: job.enabled ? 'var(--status-green)' : 'var(--text-muted)',
+        }}>
+          {job.enabled ? t('cron.active', 'Active') : t('cron.disabled', 'Disabled')}
+        </span>
+        {job.running && (
+          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-sm)', background: 'rgba(59,130,246,0.15)', color: 'var(--status-blue)' }}>
+            {t('cron.running', 'Running')}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Column Header ──
+
+function ColumnHeader({ col, count, allSelected, someSelected, onSelectAll, selectMode }: {
+  col: { id: string; color: string }; count: number; allSelected: boolean; someSelected: boolean; onSelectAll: () => void; selectMode?: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: col.color }} />
+        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
+          {t(`kanban.${col.id === 'in_progress' ? 'in_progress' : col.id}`)}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {selectMode && count > 0 && (
+          <Checkbox checked={allSelected} indeterminate={someSelected} onChange={onSelectAll} style={{ fontSize: 12 }} />
+        )}
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: 'var(--radius-sm)' }}>
+          {count}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ──
 
 export function KanbanPage() {
   const { t } = useTranslation()
   const connState = useConnectionState()
-  const [cards, setCards] = useState<KanbanCard[]>([])
+  const [tasks, setTasks] = useState<TaskItem[]>([])
+  const [crons, setCrons] = useState<CronJob[]>([])
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalCard, setModalCard] = useState<KanbanCard | null>(null)
-  const [modalTargetCol, setModalTargetCol] = useState('')
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
+  const [blockModal, setBlockModal] = useState<{ card: TaskItem; target: string } | null>(null)
   const [blockReason, setBlockReason] = useState('')
-  const dragRef = useRef<KanbanCard | null>(null)
+  const [dragRef, setDragRef] = useState<{ task: TaskItem; fromCol: string } | null>(null)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [createForm] = Form.useForm()
 
-  // Fetch all data
+  // Execution state
+  const [runningTasks, setRunningTasks] = useState<RunningTask[]>([])
+  const [executingIds, setExecutingIds] = useState<Set<string>>(new Set())
+  const runningRef = useRef<RunningTask[]>([])
+
+  // ── Status matching ──
+  const statusMatch = (s: string) => s?.toLowerCase().replace(/[\s_-]/g, '_')
+
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const allCards: KanbanCard[] = []
-
-    // Fetch local tasks
     try {
       const res = await tasksApi.list()
-      res.items.forEach((task) => allCards.push(taskToCard(task)))
-    } catch { /* ignore */ }
+      const items = Array.isArray(res?.items) ? res.items : Array.isArray(res) ? res : []
+      setTasks(items)
+    } catch { setTasks([]) }
 
-    // Fetch Gateway sessions
-    let sessions: any[] = []
     if (connState === 'connected') {
       try {
-        const sessionsRes = await gatewayClient.call('sessions.list')
-        sessions = sessionsRes?.items || sessionsRes || []
-        sessions.forEach((s: any) => allCards.push(sessionToCard(s)))
-
-        // Sync to backend (kanban + lifecycle)
-        fetch('/api/kanban/sync', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessions, crons: [] }),
-        }).catch(() => {})
-        fetch('/api/agents/lifecycle/sync', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessions }),
-        }).catch(() => {})
-      } catch { /* ignore */ }
-
-      try {
-        const crons = await gatewayClient.call('cron.list')
-        const cronList = crons?.items || crons || []
-        cronList.forEach((c: any) => allCards.push(cronToCard(c)))
-
-        fetch('/api/kanban/sync', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessions: [], crons: cronList }),
-        }).catch(() => {})
-      } catch { /* ignore */ }
-    } else {
-      // Fallback: load from backend cache
-      try {
-        const res = await fetch('/api/kanban/gateway-cards')
-        const data = await res.json()
-        if (data.cards) {
-          data.cards.forEach((c: any) => allCards.push(c as KanbanCard))
-        }
-      } catch { /* ignore */ }
+        const res = await gatewayClient.call('cron.list', { includeDisabled: true })
+        const jobs: CronJob[] = Array.isArray(res) ? res : Array.isArray(res?.jobs) ? res.jobs : Array.isArray(res?.cards) ? res.cards : Array.isArray(res?.crons) ? res.crons : []
+        setCrons(jobs)
+      } catch { setCrons([]) }
     }
-
-    setCards(allCards)
     setLoading(false)
   }, [connState])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { const t = setInterval(fetchData, 30000); return () => clearInterval(t) }, [fetchData])
+
+  // ── Listen for Gateway events (session progress) ──
   useEffect(() => {
-    const timer = setInterval(fetchData, 30000)
-    return () => clearInterval(timer)
-  }, [fetchData])
-
-  // ── Execute drag action ──
-  const executeDrag = async (card: KanbanCard, targetCol: string, reason?: string) => {
-    try {
-      const res = await fetch('/api/kanban/drag-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          card_source: card.source,
-          card_id: card.cardId,
-          from_column: card.column,
-          to_column: targetCol,
-          reason,
-        }),
+    if (connState !== 'connected') return
+    const unsub = gatewayClient.on('session.output', (payload: any) => {
+      // Check if this session matches one of our running tasks
+      setRunningTasks(prev => {
+        const updated = prev.map(rt => {
+          if (rt.status !== 'running') return rt
+          // We use taskId matching via session metadata or agent correlation
+          // For now, update progress heuristically
+          return rt
+        })
+        runningRef.current = updated
+        return updated
       })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error || 'Drag action failed')
+    })
 
-      // Execute real Gateway action if returned
-      if (data.action && connState === 'connected') {
-        const act = data.action
-        if (act.action === 'session.stop') {
-          await gatewayClient.call('sessions.stop', { sessionKey: act.session_key })
-        } else if (act.action === 'session.send') {
-          await gatewayClient.call('sessions.send', { sessionKey: act.session_key, message: act.message })
-        } else if (act.action === 'cron.update') {
-          await gatewayClient.call('cron.update', { id: act.job_id, enabled: act.enabled })
-        } else if (act.action === 'cron.run') {
-          await gatewayClient.call('cron.run', { id: act.job_id })
-        } else if (act.action === 'task.update') {
-          await tasksApi.update(act.task_id, { status: act.new_status })
-        }
-      }
+    const unsub2 = gatewayClient.on('session.end', (payload: any) => {
+      setRunningTasks(prev => {
+        const updated = prev.map(rt => {
+          if (rt.status !== 'running') return rt
+          // Mark as completed
+          return { ...rt, status: 'completed' as const, progress: 100, step: t('kanban.completed', '已完成') }
+        })
+        runningRef.current = updated
+        return updated
+      })
+      // Clean up completed tasks after a delay
+      setTimeout(() => {
+        setRunningTasks(prev => {
+          const filtered = prev.filter(rt => rt.status === 'running')
+          runningRef.current = filtered
+          return filtered
+        })
+        setExecutingIds(prev => { const n = new Set(prev); return n })
+      }, 5000)
+    })
 
-      setToast({ message: t('kanban.dragSuccess'), type: 'success' })
-      // Brief delay then refresh
-      setTimeout(fetchData, 500)
-    } catch (e: any) {
-      setToast({ message: t('kanban.dragFailed') + ': ' + (e.message || ''), type: 'error' })
-    }
-  }
+    return () => { unsub(); unsub2() }
+  }, [connState, t])
 
-  // ── DnD handlers ──
-  const onDragStart = (start: DragStart) => {
-    // Find the card
-    const col = KANBAN_COLUMNS.find(c => c.id === start.source.droppableId)
-    if (!col) return
-    const idx = start.source.index
-    const colCards = cards.filter(c => c.column === col!.id)
-    if (colCards[idx]) dragRef.current = colCards[idx]
-  }
+  // ── Simulate progress for running tasks (placeholder until Gateway provides real progress) ──
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRunningTasks(prev => prev.map(rt => {
+        if (rt.status !== 'running') return rt
+        const elapsed = (Date.now() - rt.startedAt) / 1000
+        const newProgress = Math.min(90, Math.floor(elapsed / 2))
+        const steps = [
+          t('kanban.step_analyzing', '分析任务中...'),
+          t('kanban.step_planning', '制定执行计划...'),
+          t('kanban.step_executing', '执行中...'),
+          t('kanban.step_verifying', '验证结果...'),
+        ]
+        const stepIdx = Math.min(Math.floor(elapsed / 15), steps.length - 1)
+        return { ...rt, progress: newProgress, step: steps[stepIdx] }
+      }))
+    }, 3000)
+    return () => clearInterval(id)
+  }, [t])
 
-  const onDragEnd = (result: DropResult) => {
-    const card = dragRef.current
-    dragRef.current = null
-    if (!result.destination || !card) return
-
-    const targetCol = result.destination.droppableId
-    if (targetCol === card.column) return
-
-    // If dragging to blocked, show modal
-    if (targetCol === 'blocked') {
-      setModalCard(card)
-      setModalTargetCol(targetCol)
-      setBlockReason('')
-      setModalOpen(true)
+  // ── Execute task ──
+  const handleExecute = async (task: TaskItem) => {
+    if (connState !== 'connected') {
+      message.warning(t('kanban.notConnected', 'Gateway 未连接'))
       return
     }
 
-    executeDrag(card, targetCol)
+    const agentId = task.ownerRole || 'main'
+    setExecutingIds(prev => { const n = new Set(prev); n.add(task.id); return n })
+
+    const rt: RunningTask = {
+      taskId: task.id,
+      title: task.title,
+      agentId,
+      startedAt: Date.now(),
+      status: 'running',
+      progress: 0,
+      step: t('kanban.step_starting', '启动中...'),
+      elapsed: '0:00',
+    }
+
+    setRunningTasks(prev => {
+      const updated = [...prev, rt]
+      runningRef.current = updated
+      return updated
+    })
+
+    // Move task to running status
+    try {
+      await tasksApi.update(task.id, { status: 'running' })
+    } catch { /* ignore */ }
+
+    // Try to send message to agent via Gateway
+    try {
+      await gatewayClient.call('chat.send', {
+        agent: agentId,
+        message: task.description || task.title,
+        taskId: task.id,
+      })
+    } catch {
+      // Fallback: try cron.trigger approach
+      try {
+        await gatewayClient.call('agent.run', {
+          taskId: task.id,
+          agentId,
+          message: task.description || task.title,
+        })
+      } catch (e: any) {
+        message.error(t('kanban.executeFailed', '执行失败') + ': ' + (e.message || ''))
+        setRunningTasks(prev => prev.filter(r => r.taskId !== task.id))
+        setExecutingIds(prev => { const n = new Set(prev); n.delete(task.id); return n })
+      }
+    }
+
+    setTimeout(fetchData, 1000)
   }
 
-  const handleModalConfirm = () => {
-    if (modalCard) {
-      executeDrag(modalCard, modalTargetCol, blockReason)
-    }
-    setModalOpen(false)
-    setModalCard(null)
+  // ── Task operations ──
+  const handleDeleteTask = async (id: string) => {
+    try {
+      await tasksApi.delete(id)
+      setTasks(prev => prev.filter(t => t.id !== id))
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n })
+      message.success(t('app.deleted', '已删除'))
+    } catch { message.error(t('app.error')) }
   }
+
+  const handleBatchDelete = async () => {
+    const ids = Array.from(selectedIds)
+    try {
+      await Promise.all(ids.map(id => tasksApi.delete(id)))
+      setTasks(prev => prev.filter(t => !selectedIds.has(t.id)))
+      setSelectedIds(new Set())
+      message.success(t('app.batch_deleted', `已删除 ${ids.length} 个任务`))
+    } catch { message.error(t('app.error')) }
+  }
+
+  const handleDragUpdate = async (task: TaskItem, newStatus: string, reason?: string) => {
+    try {
+      await tasksApi.update(task.id, { status: newStatus })
+      setToast({ msg: t('kanban.dragSuccess'), type: 'success' })
+      setTimeout(fetchData, 300)
+    } catch (e: any) {
+      setToast({ msg: (e.message || t('kanban.dragFailed')), type: 'error' })
+    }
+  }
+
+  // ── Cron operations ──
+  const handleToggleCron = async (id: string, enabled: boolean) => {
+    try { await gatewayClient.call('cron.update', { jobId: id, patch: { enabled: !enabled } }); fetchData() } catch { /* */ }
+  }
+  const handleTriggerCron = async (id: string) => {
+    try { await gatewayClient.call('cron.run', { jobId: id }) } catch { /* */ }
+  }
+  const handleDeleteCron = async (id: string) => {
+    try { await gatewayClient.call('cron.remove', { jobId: id }); fetchData(); message.success(t('app.deleted', '已删除')) } catch { message.error(t('app.error')) }
+  }
+  const handleCreateTask = async (values: any) => {
+    try {
+      await tasksApi.create(values)
+      setCreateModalOpen(false)
+      createForm.resetFields()
+      fetchData()
+      message.success(t('kanban.createSuccess', '任务已创建'))
+    } catch { message.error(t('app.error')) }
+  }
+
+  // ── Selection ──
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  const selectAllInColumn = (colId: TaskStatus) => {
+    const colTasks = tasks.filter(t => statusMatch(t.status) === colId)
+    const allSelected = colTasks.length > 0 && colTasks.every(t => selectedIds.has(t.id))
+    setSelectedIds(prev => {
+      const n = new Set(prev)
+      colTasks.forEach(t => allSelected ? n.delete(t.id) : n.add(t.id))
+      return n
+    })
+  }
+
+  // ── DnD ──
+  const onDragStart = (start: DragStart) => {
+    const colId = start.source.droppableId as TaskStatus
+    const colTasks = tasks.filter(t => statusMatch(t.status) === colId)
+    const card = colTasks[start.source.index]
+    if (card) setDragRef({ task: card, fromCol: colId })
+  }
+
+  const onDragEnd = (result: DropResult) => {
+    const ref = dragRef
+    setDragRef(null)
+    if (!result.destination || !ref) return
+    const targetCol = result.destination.droppableId as TaskStatus
+    if (targetCol === ref.fromCol) return
+    if (targetCol === 'blocked') {
+      setBlockModal({ card: ref.task, target: targetCol })
+    } else {
+      handleDragUpdate(ref.task, targetCol)
+    }
+  }
+
+  const allTasksSelected = tasks.length > 0 && tasks.every(t => selectedIds.has(t.id))
+
+  // DnD columns (exclude 'running' since it's virtual)
+  const dndColumns = TASK_COLUMNS.filter(c => c.id !== 'running')
 
   return (
     <div>
@@ -270,12 +511,70 @@ export function KanbanPage() {
         <p className="page-header-eyebrow">{t('kanban.eyebrow')}</p>
         <h1>{t('kanban.title')}</h1>
         <p className="page-header-desc">{t('kanban.subtitle')}</p>
+        <div style={{ marginTop: 12, marginBottom: 8, display: 'flex', gap: 8 }}>
+          <Button type="primary" onClick={() => setCreateModalOpen(true)}>+ {t('kanban.createTask', '新建任务')}</Button>
+          <Button
+            type={selectMode ? 'primary' : 'default'}
+            danger={selectMode}
+            onClick={() => { setSelectMode(!selectMode); if (selectMode) setSelectedIds(new Set()) }}
+          >
+            {selectMode ? '✓ ' + t('kanban.done', '完成') : '☐ ' + t('kanban.manage', '管理')}
+          </Button>
+        </div>
       </div>
 
+      {/* Running tasks banner */}
+      {runningTasks.length > 0 && (
+        <div style={{
+          marginBottom: 'var(--space-4)',
+          background: 'var(--bg-secondary, rgba(0,0,0,0.02))',
+          borderRadius: 'var(--radius-lg)', padding: 'var(--space-3)',
+          border: '1px solid var(--border-color)', borderLeft: '3px solid var(--status-blue)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-3)' }}>
+            <Spin size="small" />
+            <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
+              {t('kanban.running', '执行中')}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: 'var(--radius-sm)' }}>
+              {runningTasks.length}
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-2)' }}>
+            {runningTasks.map(rt => <RunningTaskCard key={rt.taskId} rt={rt} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Batch action bar */}
+      {selectMode && selectedIds.size > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', marginBottom: 'var(--space-4)',
+          background: 'var(--accent-bg, rgba(59,130,246,0.08))', borderRadius: 'var(--radius-md)',
+          border: '1px solid rgba(59,130,246,0.2)', flexWrap: 'wrap',
+        }}>
+          <Checkbox checked={allTasksSelected} indeterminate={selectedIds.size > 0 && !allTasksSelected} onChange={() => {
+            setSelectedIds(allTasksSelected ? new Set() : new Set(tasks.map(t => t.id)))
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{t('app.select_all', '全选')}</span>
+          </Checkbox>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{selectedIds.size} {t('app.selected', '已选')}</span>
+          <Popconfirm
+            title={t('app.confirm_batch_delete', `确定删除 ${selectedIds.size} 个任务？`)}
+            onConfirm={handleBatchDelete}
+            okText={t('app.delete')}
+            cancelText={t('app.cancel')}
+          >
+            <Button danger size="small">{t('app.batch_delete', '批量删除')}</Button>
+          </Popconfirm>
+          <Button size="small" onClick={() => setSelectedIds(new Set())}>{t('app.cancel')}</Button>
+        </div>
+      )}
+
       {loading ? (
-        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-          {KANBAN_COLUMNS.map(col => (
-            <div key={col.id} style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+          {dndColumns.map(col => (
+            <div key={col.id} style={{ flex: '1 1 240px', minWidth: 220, maxWidth: 360 }}>
               <div className="skeleton" style={{ width: '50%', height: 20, marginBottom: 16 }} />
               {[1, 2, 3].map(i => (
                 <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-lg)', marginBottom: 8 }} />
@@ -284,136 +583,137 @@ export function KanbanPage() {
           ))}
         </div>
       ) : (
-        <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="kanban-board">
-            {KANBAN_COLUMNS.map(col => {
-              const colCards = cards.filter(c => c.column === col.id)
-              return (
-                <Droppable key={col.id} droppableId={col.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className="kanban-column"
-                      style={{
+        <>
+          {/* Task columns — NO horizontal scroll */}
+          <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+            <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+              {dndColumns.map(col => {
+                const colTasks = tasks.filter(t => statusMatch(t.status) === col.id)
+                return (
+                  <Droppable key={col.id} droppableId={col.id}>
+                    {(provided, snapshot) => (
+                      <div ref={provided.innerRef} {...provided.droppableProps} style={{
+                        flex: '1 1 240px', minWidth: 0,
+                        background: snapshot.isDraggingOver ? 'var(--bg-surface-hover)' : 'var(--bg-secondary, rgba(0,0,0,0.02))',
+                        borderRadius: 'var(--radius-lg)', padding: 'var(--space-3)',
+                        border: '1px solid var(--border-color)',
                         borderColor: snapshot.isDraggingOver ? col.color : undefined,
-                        background: snapshot.isDraggingOver ? 'var(--bg-surface-hover)' : undefined,
-                      }}
-                    >
-                      <div className="kanban-col-header">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: col.color }} />
-                          <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
-                            {t(`kanban.${col.id === 'in_progress' ? 'in_progress' : col.id}`)}
-                          </span>
-                        </div>
-                        <span className="badge" style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>
-                          {colCards.length}
-                        </span>
-                      </div>
-                      <div className="kanban-cards">
-                        {colCards.map((card, idx) => (
-                          <Draggable key={`${card.source}-${card.cardId}`} draggableId={`${card.source}-${card.cardId}`} index={idx}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className="kanban-card"
-                                style={{
-                                  ...provided.draggableProps.style,
-                                  opacity: snapshot.isDragging ? 0.85 : 1,
-                                  boxShadow: snapshot.isDragging ? 'var(--shadow-lg)' : undefined,
-                                  borderLeft: `3px solid ${SOURCE_COLORS[card.source] || '#6b7280'}`,
-                                }}
-                              >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                  <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 'var(--text-sm)', flex: 1 }}>
-                                    {card.label}
-                                  </span>
-                                  <span style={{
-                                    fontSize: 10, padding: '1px 6px', borderRadius: 'var(--radius-sm)',
-                                    background: SOURCE_COLORS[card.source] + '22', color: SOURCE_COLORS[card.source],
-                                    whiteSpace: 'nowrap', flexShrink: 0,
-                                  }}>
-                                    {card.source === 'gateway-session' ? t('kanban.session')
-                                      : card.source === 'gateway-cron' ? t('kanban.cron')
-                                      : t('kanban.local')}
-                                  </span>
-                                </div>
-                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
-                                  {card.channel && (
-                                    <span className="badge" style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-muted)', fontSize: 10 }}>
-                                      {card.channel}
-                                    </span>
-                                  )}
-                                  {card.totalTokens > 0 && (
-                                    <span className="badge" style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-muted)', fontSize: 10 }}>
-                                      {card.totalTokens.toLocaleString()} {t('kanban.tokens')}
-                                    </span>
-                                  )}
-                                  {card.source === 'local' && card.extra?.priority && (
-                                    <span className={`badge badge-priority-${card.extra.priority}`} style={{ fontSize: 10 }}>
-                                      {card.extra.priority}
-                                    </span>
-                                  )}
-                                </div>
-                                {card.updatedAt && (
-                                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>
-                                    {new Date(card.updatedAt).toLocaleString()}
-                                  </div>
-                                )}
+                        transition: 'background 0.15s',
+                      }}>
+                        <ColumnHeader
+                          col={col}
+                          count={colTasks.length}
+                          allSelected={colTasks.length > 0 && colTasks.every(t => selectedIds.has(t.id))}
+                          someSelected={colTasks.some(t => selectedIds.has(t.id)) && !colTasks.every(t => selectedIds.has(t.id))}
+                          onSelectAll={() => selectAllInColumn(col.id)}
+                          selectMode={selectMode}
+                        />
+                        {colTasks.map((task, idx) => (
+                          <Draggable key={task.id} draggableId={task.id} index={idx}>
+                            {(prov, snap) => (
+                              <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps}>
+                                <TaskCard
+                                  task={task}
+                                  onDelete={handleDeleteTask}
+                                  selected={selectedIds.has(task.id)}
+                                  onToggleSelect={() => toggleSelect(task.id)}
+                                  isDragging={snap.isDragging}
+                                  onExecute={() => handleExecute(task)}
+                                  isExecuting={executingIds.has(task.id)}
+                                  selectMode={selectMode}
+                                />
                               </div>
                             )}
                           </Draggable>
                         ))}
-                        {colCards.length === 0 && (
+                        {colTasks.length === 0 && (
                           <div style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 'var(--space-8)' }}>
                             {t('kanban.noCards')}
                           </div>
                         )}
                         {provided.placeholder}
                       </div>
-                    </div>
-                  )}
-                </Droppable>
-              )
-            })}
+                    )}
+                  </Droppable>
+                )
+              })}
+            </DragDropContext>
           </div>
-        </DragDropContext>
+
+          {/* Cron Jobs — BELOW task columns */}
+          {crons.length > 0 && (
+            <div style={{
+              background: 'var(--bg-secondary, rgba(0,0,0,0.02))',
+              borderRadius: 'var(--radius-lg)', padding: 'var(--space-3)',
+              border: '1px solid var(--border-color)', borderLeft: '3px solid #f59e0b',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ClockCircleOutlined style={{ color: '#f59e0b' }} />
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
+                    {t('cron.title', '定时任务')}
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-surface-hover)', padding: '2px 8px', borderRadius: 'var(--radius-sm)' }}>
+                  {crons.length}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-2)' }}>
+                {crons.map(job => (
+                  <CronCard key={job.id} job={job} onToggle={handleToggleCron} onTrigger={handleTriggerCron} onDelete={handleDeleteCron} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Block Reason Modal */}
-      {modalOpen && modalCard && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }} onClick={() => setModalOpen(false)}>
-          <div style={{
-            background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', padding: 24,
-            width: 400, maxWidth: '90vw', boxShadow: 'var(--shadow-xl)',
-          }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: 'var(--text-primary)', marginBottom: 16, fontSize: 16 }}>{t('kanban.blockReason')}</h3>
-            <textarea
-              value={blockReason}
-              onChange={e => setBlockReason(e.target.value)}
-              placeholder={t('kanban.blockReasonPlaceholder')}
-              style={{
-                width: '100%', minHeight: 80, padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)', background: 'var(--bg-primary)',
-                color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', marginBottom: 16,
-              }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>{t('kanban.cancel')}</button>
-              <button className="btn btn-primary" onClick={handleModalConfirm}>{t('kanban.confirm')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={!!blockModal}
+        title={t('kanban.blockReason')}
+        onCancel={() => { setBlockModal(null); setBlockReason('') }}
+        onOk={() => { if (blockModal) { handleDragUpdate(blockModal.card, blockModal.target, blockReason); setBlockModal(null); setBlockReason('') } }}
+        okText={t('kanban.confirm')}
+        cancelText={t('kanban.cancel')}
+      >
+        <Input.TextArea value={blockReason} onChange={e => setBlockReason(e.target.value)}
+          placeholder={t('kanban.blockReasonPlaceholder')} style={{ width: '100%', minHeight: 80 }} />
+      </Modal>
 
-      {/* Toast */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {/* Create Task Modal */}
+      <Modal
+        open={createModalOpen}
+        title={t('kanban.createTask', '新建任务')}
+        onCancel={() => { setCreateModalOpen(false); createForm.resetFields() }}
+        onOk={() => createForm.submit()}
+        okText={t('kanban.confirm')}
+        cancelText={t('kanban.cancel')}
+      >
+        <Form form={createForm} layout="vertical" onFinish={handleCreateTask}>
+          <Form.Item name="title" label={t('kanban.taskTitle', '标题')} rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="description" label={t('kanban.taskDesc', '描述')}>
+            <Input.TextArea />
+          </Form.Item>
+          <Form.Item name="priority" label={t('kanban.priority', '优先级')}>
+            <Select options={[
+              { value: 'high', label: 'High' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'low', label: 'Low' },
+            ]} />
+          </Form.Item>
+          <Form.Item name="status" label={t('kanban.status', '状态')} initialValue="planned">
+            <Select options={dndColumns.map(c => ({ value: c.id, label: t(`kanban.${c.id === 'in_progress' ? 'in_progress' : c.id}`) }))} />
+          </Form.Item>
+          <Form.Item name="project_id" label={t('kanban.projectId', '项目ID')}>
+            <Input />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

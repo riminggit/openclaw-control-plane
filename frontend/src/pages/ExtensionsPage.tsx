@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button, Card, Switch, Empty, Tag, Row, Col, Space, Spin, Tooltip, Typography } from 'antd'
+import { ApiOutlined, GlobalOutlined, ArrowDownOutlined, ArrowUpOutlined, SettingOutlined } from '@ant-design/icons'
+
+const { Text, Paragraph } = Typography
+
 
 const API = '/api/extensions'
 
@@ -9,7 +14,7 @@ interface Extension {
   description: string
   version: string
   enabled: boolean
-  type: 'plugin' | 'tunnel'
+  type: 'plugin' | 'tunnel' | string
 }
 
 interface TunnelInfo {
@@ -17,6 +22,8 @@ interface TunnelInfo {
   url: string
   bytesIn: number
   bytesOut: number
+  available: boolean
+  running: boolean
 }
 
 export function ExtensionsPage() {
@@ -26,90 +33,143 @@ export function ExtensionsPage() {
   const [loading, setLoading] = useState(true)
 
   const fetchExtensions = useCallback(async () => {
-    try { const r = await fetch(API); if (r.ok) setExtensions(await r.json()) } catch {}
+    try {
+      const r = await fetch(API)
+      if (r.ok) {
+        const data = await r.json()
+        setExtensions(Array.isArray(data) ? data : data?.extensions || [])
+      }
+    } catch { /* ignore */ }
   }, [])
 
   const fetchTunnel = useCallback(async () => {
-    try { const r = await fetch(`${API}/tunnel`); if (r.ok) setTunnel(await r.json()) } catch {}
+    try {
+      const r = await fetch(`${API}/tunnel`)
+      if (r.ok) setTunnel(await r.json())
+    } catch { /* ignore */ }
   }, [])
 
-  useEffect(() => { Promise.all([fetchExtensions(), fetchTunnel()]).finally(() => setLoading(false)) }, [])
+  useEffect(() => {
+    Promise.all([fetchExtensions(), fetchTunnel()]).finally(() => setLoading(false))
+  }, [fetchExtensions, fetchTunnel])
 
   const toggleExtension = async (id: string, enabled: boolean) => {
     try {
-      const r = await fetch(`${API}/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) })
+      const r = await fetch(`${API}/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
       if (r.ok) fetchExtensions()
-    } catch {}
+    } catch { /* ignore */ }
   }
 
   const formatBytes = (b: number) => {
+    if (!b) return '0 B'
     if (b < 1024) return `${b} B`
     if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`
     return `${(b / 1048576).toFixed(1)} MB`
   }
 
-  if (loading) return <div className="skeleton" style={{ height: 200 }} />
+  const tunnelStatusColor = (status: string) => {
+    if (status === 'connected') return 'success'
+    if (status === 'connecting') return 'warning'
+    return 'error'
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+        <Spin size="large" />
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      <div>
-        <p className="eyebrow">{t('extensions.eyebrow')}</p>
-        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 600 }}>{t('extensions.title')}</h1>
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">{t('extensions.eyebrow')}</div>
+          <h1 className="page-title">{t('extensions.title')}</h1>
+          <p className="page-subtitle">{t('extensions.subtitle', '管理插件、隧道和扩展功能')}</p>
+        </div>
       </div>
 
       {/* Tunnel Card */}
-      {tunnel && (
-        <div className="card" style={{ padding: 'var(--space-4)' }}>
+      {tunnel && tunnel.available && (
+        <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>CFTunnel</h3>
-              <span className={`badge ${tunnel.status === 'connected' ? 'badge-green' : tunnel.status === 'connecting' ? 'badge-yellow' : 'badge-red'}`}>
+            <Space size="middle">
+              <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>CFTunnel</h3>
+              <Tag color={tunnelStatusColor(tunnel.status)}>
                 {t(`extensions.tunnel_${tunnel.status}`)}
-              </span>
-            </div>
+              </Tag>
+            </Space>
             {tunnel.url && (
-              <a href={tunnel.url} target="_blank" rel="noopener" className="btn btn-secondary" style={{ fontSize: 'var(--text-xs)' }}>
-                {tunnel.url} ↗
-              </a>
+              <Tooltip title={tunnel.url}>
+                <Button size="small" href={tunnel.url} target="_blank" rel="noopener">
+                  {tunnel.url} ↗
+                </Button>
+              </Tooltip>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-6)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-            <div>↓ {formatBytes(tunnel.bytesIn)}</div>
-            <div>↑ {formatBytes(tunnel.bytesOut)}</div>
-          </div>
-        </div>
+          <Space size="large" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+            <span>↓ {formatBytes(tunnel.bytesIn)}</span>
+            <span>↑ {formatBytes(tunnel.bytesOut)}</span>
+          </Space>
+        </Card>
       )}
 
       {/* Extensions Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
-        {extensions.map(ext => (
-          <div key={ext.id} className="card" style={{ padding: 'var(--space-4)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-              <div>
-                <h4 style={{ fontWeight: 600, fontSize: 'var(--text-base)' }}>{ext.name}</h4>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>v{ext.version}</div>
-              </div>
-              <label style={{ position: 'relative', display: 'inline-block', width: 36, height: 20 }}>
-                <input type="checkbox" checked={ext.enabled} onChange={() => toggleExtension(ext.id, !ext.enabled)} style={{ opacity: 0, width: 0, height: 0 }} />
-                <span style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-full)', background: ext.enabled ? 'var(--accent)' : 'var(--border-default)', transition: 'var(--transition-fast)', cursor: 'pointer' }}>
-                  <span style={{ position: 'absolute', top: 2, left: ext.enabled ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'var(--transition-fast)' }} />
-                </span>
-              </label>
-            </div>
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{ext.description}</p>
-            <div style={{ marginTop: 'var(--space-2)' }}>
-              <span className={`badge ${ext.enabled ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: 'var(--text-xs)' }}>
-                {ext.enabled ? t('extensions.enabled') : t('extensions.disabled')}
-              </span>
-            </div>
-          </div>
-        ))}
-        {extensions.length === 0 && !tunnel && (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 'var(--space-8)', color: 'var(--text-muted)' }}>
-            {t('extensions.no_extensions')}
-          </div>
-        )}
-      </div>
+      {extensions.length === 0 ? (
+        <Card>
+          <Empty
+            description={t('extensions.no_extensions')}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        </Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {extensions.map(ext => (
+            <Col xs={24} sm={12} lg={8} key={ext.id}>
+              <Card
+                hoverable
+                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column', gap: 8 } }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Space>
+                    <ApiOutlined style={{ fontSize: 18, color: 'var(--accent)' }} />
+                    <Text strong style={{ fontSize: 15 }}>{ext.name}</Text>
+                  </Space>
+                  <Space size={4}>
+                    <Tag color="blue">v{ext.version}</Tag>
+                    <Tag color={ext.type === 'plugin' ? 'purple' : 'cyan'}>{ext.type}</Tag>
+                  </Space>
+                </div>
+                <Paragraph
+                  type="secondary"
+                  ellipsis={{ rows: 2 }}
+                  style={{ margin: 0, fontSize: 13, flex: 1 }}
+                >
+                  {ext.description || '—'}
+                </Paragraph>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)', marginTop: 'auto' }}>
+                  <Tag color={ext.enabled ? 'success' : 'default'}>
+                    {ext.enabled ? '● Active' : '○ Inactive'}
+                  </Tag>
+                  <Switch
+                    checked={ext.enabled}
+                    onChange={(checked) => toggleExtension(ext.id, checked)}
+                    checkedChildren="ON"
+                    unCheckedChildren="OFF"
+                  />
+                </div>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      )}
     </div>
   )
 }

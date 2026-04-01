@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { logsApi } from '../api/modules/logs'
+import { Button, Input, Spin, Switch, Checkbox } from 'antd'
+
 
 type LogSource = 'gateway' | 'error' | 'backend'
 
@@ -78,20 +80,19 @@ export function LogsPage() {
       {/* Source tabs */}
       <div style={{ display: 'flex', gap: 2, background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', padding: 3, flexShrink: 0 }}>
         {SOURCES.map(s => (
-          <button key={s.key} onClick={() => setSource(s.key)} style={{
+          <Button key={s.key} onClick={() => setSource(s.key)} style={{
             padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
             background: source === s.key ? 'var(--accent)' : 'transparent',
             color: source === s.key ? '#fff' : 'var(--text-secondary)',
             fontSize: 'var(--text-sm)', fontWeight: 500,
-          }}>{t(s.labelKey)}</button>
+          }}>{t(s.labelKey)}</Button>
         ))}
       </div>
 
       {/* Toolbar */}
       <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', marginTop: 'var(--space-3)', flexShrink: 0 }}>
         <div style={{ flex: 1, position: 'relative' }}>
-          <input
-            className="input"
+          <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('logs.search_placeholder')}
@@ -99,12 +100,12 @@ export function LogsPage() {
           />
           <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>🔍</span>
         </div>
-        <button className="btn btn-ghost" onClick={fetchLogs} disabled={loading}>🔄 {t('logs.refresh')}</button>
+        <Button type="text" onClick={fetchLogs} disabled={loading}>🔄 {t('logs.refresh')}</Button>
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-          <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} />
+          <Checkbox checked={autoRefresh} onChange={(v: any) => setAutoRefresh(v.checked)} />
           {t('logs.auto_refresh')}
         </label>
-        <button className="btn btn-ghost" onClick={handleExport}>📥 {t('logs.export')}</button>
+        <Button type="text" onClick={handleExport}>📥 {t('logs.export')}</Button>
       </div>
 
       {/* Log content */}

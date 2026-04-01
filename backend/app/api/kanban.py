@@ -1,7 +1,12 @@
 """Phase 4: Real-time Kanban — Gateway cards aggregation + drag actions."""
 
+import json
+import logging
+import os
+import subprocess
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,13 +14,49 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db, ActivityLog
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/kanban")
 
-# ── In-memory cache for Gateway data (pushed by frontend) ──
+# ── Persistent cache file for Gateway data ──
+
+CACHE_DIR = Path(os.environ.get("CONTROL_PLANE_DATA_DIR", "."))
+CACHE_FILE = CACHE_DIR / ".kanban_gateway_cache.json"
 
 _cached_sessions: list[dict] = []
 _cached_crons: list[dict] = []
 _cache_updated_at: str = ""
+_last_fetch_error: str = ""
+
+
+def _load_cache_from_disk():
+    """Load persisted cache from disk on startup."""
+    global _cached_sessions, _cached_crons, _cache_updated_at
+    try:
+        if CACHE_FILE.exists():
+            data = json.loads(CACHE_FILE.read_text())
+            _cached_sessions = data.get("sessions", [])
+            _cached_crons = data.get("crons", [])
+            _cache_updated_at = data.get("updated_at", "")
+            logger.info("Loaded kanban cache from disk: %d sessions, %d crons",
+                        len(_cached_sessions), len(_cached_crons))
+    except Exception as e:
+        logger.warning("Failed to load kanban cache: %s", e)
+
+
+def _save_cache_to_disk():
+    """Persist current cache to disk."""
+    try:
+        CACHE_FILE.write_text(json.dumps({
+            "sessions": _cached_sessions,
+            "crons": _cached_crons,
+            "updated_at": _cache_updated_at,
+        }, default=str, ensure_ascii=False))
+    except Exception as e:
+        logger.warning("Failed to save kanban cache: %s", e)
+
+
+# Load cache on module import
+_load_cache_from_disk()
 
 
 # ── Schemas ──
@@ -99,11 +140,85 @@ def _cron_to_column(cron: dict) -> str:
 
 @router.post("/sync")
 def sync_gateway_data(req: SyncRequest):
-    global _cached_sessions, _cached_crons, _cache_updated_at
+    global _cached_sessions, _cached_crons, _cache_updated_at, _last_fetch_error
     _cached_sessions = req.sessions or []
     _cached_crons = req.crons or []
     _cache_updated_at = datetime.now(timezone.utc).isoformat()
+    _last_fetch_error = ""
+    _save_cache_to_disk()
     return {"ok": True, "sessions_count": len(_cached_sessions), "crons_count": len(_cached_crons)}
+
+
+# ── Direct Gateway fetch (fallback when frontend not connected) ──
+
+@router.get("/fetch")
+def fetch_from_gateway():
+    """Directly fetch latest data from Gateway (server-side, no WS needed)."""
+    global _cached_sessions, _cached_crons, _cache_updated_at, _last_fetch_error
+    errors = []
+
+    # Sessions: read from session store files across all agents
+    try:
+        openclaw_data_dir = Path(os.environ.get(
+            "OPENCLAW_DATA_DIR",
+            str(Path.home() / ".openclaw"),
+        ))
+        agents_dir = openclaw_data_dir / "agents"
+        fresh_sessions = []
+        if agents_dir.exists():
+            for agent_dir in agents_dir.iterdir():
+                if not agent_dir.is_dir():
+                    continue
+                sessions_file = agent_dir / "sessions" / "sessions.json"
+                if sessions_file.exists():
+                    try:
+                        store = json.loads(sessions_file.read_text())
+                        # Store is a dict keyed by session key
+                        if isinstance(store, dict):
+                            sessions = list(store.values())
+                        elif isinstance(store, list):
+                            sessions = store
+                        else:
+                            sessions = []
+                        for s in sessions:
+                            s["_agent_id"] = agent_dir.name
+                        fresh_sessions.extend(sessions)
+                    except Exception:
+                        pass
+        _cached_sessions = fresh_sessions
+        logger.info("Fetched %d sessions from %s", len(fresh_sessions), agents_dir)
+    except Exception as e:
+        errors.append(f"Sessions: {e}")
+
+    # Crons: read directly from jobs.json
+    try:
+        openclaw_config = Path.home() / ".openclaw" / "openclaw.json"
+        cron_dir = Path.home() / ".openclaw" / "cron"
+        if openclaw_config.exists():
+            cfg = json.loads(openclaw_config.read_text())
+            custom_data = cfg.get("paths", {}).get("data")
+            if custom_data:
+                cron_dir = Path(custom_data) / "cron"
+        jobs_file = cron_dir / "jobs.json"
+        if jobs_file.exists():
+            jobs_data = json.loads(jobs_file.read_text())
+            _cached_crons = jobs_data.get("jobs", [])
+        else:
+            errors.append("Crons: jobs.json not found")
+    except Exception as e:
+        errors.append(f"Crons: {e}")
+
+    _cache_updated_at = datetime.now(timezone.utc).isoformat()
+    _last_fetch_error = "; ".join(errors) if errors else ""
+    _save_cache_to_disk()
+
+    return {
+        "ok": not errors,
+        "sessions_count": len(_cached_sessions),
+        "crons_count": len(_cached_crons),
+        "error": _last_fetch_error,
+        "cache_updated_at": _cache_updated_at,
+    }
 
 
 # ── GET /api/kanban/gateway-cards ──
@@ -122,8 +237,8 @@ def get_gateway_cards():
             channel=s.get("channel", ""),
             status=s.get("result") or s.get("status", "running"),
             column=col,
-            total_tokens=s.get("totalTokens", 0) or 0,
-            updated_at=s.get("updatedAt", s.get("updated_at", "")),
+            total_tokens=int(s.get("totalTokens", 0) or 0),
+            updated_at=str(s.get("updatedAt", s.get("updated_at", ""))),
             extra=s,
         ).model_dump())
 
@@ -141,7 +256,11 @@ def get_gateway_cards():
             extra=c,
         ).model_dump())
 
-    return {"cards": cards, "cache_updated_at": _cache_updated_at}
+    return {
+        "cards": cards,
+        "cache_updated_at": _cache_updated_at,
+        "last_fetch_error": _last_fetch_error,
+    }
 
 
 # ── POST /api/kanban/drag-action ──

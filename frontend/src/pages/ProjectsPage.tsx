@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { projectsApi, type ProjectItem } from '../api/modules/projects'
 import { useTranslation } from 'react-i18next'
+import { Button, Input, Modal, Card, Empty, Popconfirm } from 'antd'
+
 
 export function ProjectsPage() {
   const { t } = useTranslation()
@@ -57,13 +59,13 @@ export function ProjectsPage() {
             <svg className="search-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
             </svg>
-            <input className="search-box-input" placeholder={t('app.search')} value={search} onChange={e => setSearch(e.target.value)} />
+            <Input placeholder={t('app.search')} value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ maxWidth: 300 }} />
           </div>
           <div style={{ flex: 1 }} />
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+          <Button type="primary" onClick={() => setShowForm(true)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
             {t('projects.new_project')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -72,29 +74,29 @@ export function ProjectsPage() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('projects.form_title')}</h2>
-              <button className="modal-close" onClick={() => setShowForm(false)}>×</button>
+              <Button className="modal-close" onClick={() => setShowForm(false)}>×</Button>
             </div>
             <form onSubmit={handleCreate}>
               <div className="form-row">
                 <div className="form-group">
                   <label>{t('projects.form_code')} *</label>
-                  <input value={formCode} onChange={e => setFormCode(e.target.value)} placeholder={t('projects.form_code_placeholder')} required />
+                  <Input value={formCode} onChange={e => setFormCode(e.target.value)} placeholder={t('projects.form_code_placeholder')} required />
                 </div>
                 <div className="form-group">
                   <label>{t('projects.form_name')} *</label>
-                  <input value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('projects.form_name_placeholder')} required />
+                  <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('projects.form_name_placeholder')} required />
                 </div>
               </div>
               <div className="form-group">
                 <label>{t('projects.form_desc')}</label>
-                <input value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder={t('projects.form_desc_placeholder')} />
+                <Input value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder={t('projects.form_desc_placeholder')} />
               </div>
               {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
               <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>{t('app.cancel')}</button>
-                <button type="submit" className="btn btn-primary" disabled={saving || !formCode.trim() || !formName.trim()}>
+                <Button htmlType="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>{t('app.cancel')}</Button>
+                <Button htmlType="submit" className="btn btn-primary" disabled={saving || !formCode.trim() || !formName.trim()}>
                   {saving ? t('app.saving') : t('app.create')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -118,7 +120,7 @@ export function ProjectsPage() {
           <div className="empty-state">
             <div className="empty-state-icon">📂</div>
             <div className="empty-state-title">{t('projects.no_projects')}</div>
-            <button className="btn btn-primary" onClick={() => setShowForm(true)}>{t('projects.new_project')}</button>
+            <Button type="primary" onClick={() => setShowForm(true)}>{t('projects.new_project')}</Button>
           </div>
         </div>
       )}
@@ -137,7 +139,7 @@ export function ProjectsPage() {
                 {p.blockedTaskCount > 0 && (
                   <span style={{ color: 'var(--status-red)' }}>🚫 {p.blockedTaskCount}</span>
                 )}
-                <button
+                <Button
                   className="btn-icon"
                   title={t('app.delete')}
                   onClick={e => { e.preventDefault(); e.stopPropagation(); handleDelete(p.id) }}
@@ -146,7 +148,7 @@ export function ProjectsPage() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                   </svg>
-                </button>
+                </Button>
               </div>
             </a>
           ))}

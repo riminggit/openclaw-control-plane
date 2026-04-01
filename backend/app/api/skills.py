@@ -105,3 +105,9 @@ def search_skills(q: str = Query(..., min_length=1)):
         return {"query": q, "results": r.stdout.strip(), "ok": r.returncode == 0}
     except FileNotFoundError:
         raise HTTPException(400, "clawhub CLI not found")
+
+
+@router.get("")
+def skills_root():
+    """Root endpoint - lists all skills."""
+    return list_skills()
