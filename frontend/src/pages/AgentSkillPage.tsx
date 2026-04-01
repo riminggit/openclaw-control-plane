@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Table, Tabs, Statistic, Row, Col, Card, Switch, Input, Button, message, Skeleton, Tag } from 'antd'
-import { CheckOutlined, CloseOutlined, MinusOutlined } from '@ant-design/icons'
+import { Table, Tabs, Statistic, Row, Col, Card, Switch, Input, Button, message, Skeleton, Tag, Empty } from 'antd'
+import { CheckOutlined, CloseOutlined, MinusOutlined, TeamOutlined, AppstoreOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
+import { useTranslation } from 'react-i18next'
 
 interface AgentInfo {
   id: string
@@ -36,6 +37,7 @@ interface AgentSkillDetail {
 }
 
 export function AgentSkillPage() {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [matrixData, setMatrixData] = useState<MatrixData | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
@@ -45,34 +47,29 @@ export function AgentSkillPage() {
   const [searchSkill, setSearchSkill] = useState('')
   const [updating, setUpdating] = useState(false)
 
-  // Load matrix data
   const loadMatrix = async () => {
     try {
       setLoading(true)
       const res = await fetch('/api/agent-skills/matrix')
       const data = await res.json()
       setMatrixData(data)
-    } catch (err) {
-      message.error('Failed to load skill matrix')
-      console.error(err)
+    } catch {
+      message.error(t('agent_skill.load_failed'))
     } finally {
       setLoading(false)
     }
   }
 
-  // Load agent detail
   const loadAgentDetail = async (agentId: string) => {
     try {
       const res = await fetch(`/api/agent-skills/${agentId}`)
       const data = await res.json()
       setAgentDetail(data)
-    } catch (err) {
-      message.error('Failed to load agent skills')
-      console.error(err)
+    } catch {
+      message.error(t('agent_skill.load_failed'))
     }
   }
 
-  // Update agent skills
   const updateAgentSkills = async (agentId: string, skills: string[] | '*') => {
     try {
       setUpdating(true)
@@ -83,66 +80,46 @@ export function AgentSkillPage() {
       })
       const data = await res.json()
       if (data.ok) {
-        message.success('Skills updated successfully')
+        message.success(t('agent_skill.update_success'))
         await loadMatrix()
         if (selectedAgent === agentId) {
           await loadAgentDetail(agentId)
         }
       } else {
-        message.error('Failed to update skills')
+        message.error(t('agent_skill.update_failed'))
       }
-    } catch (err) {
-      message.error('Failed to update skills')
-      console.error(err)
+    } catch {
+      message.error(t('agent_skill.update_failed'))
     } finally {
       setUpdating(false)
     }
   }
 
-  // Toggle a single skill for an agent
   const toggleSkill = async (agentId: string, skillName: string, currentEnabled: boolean) => {
     if (!matrixData) return
-
     const agent = matrixData.agents.find(a => a.id === agentId)
     if (!agent) return
 
     let newSkills: string[] | '*'
-    
     if (currentEnabled) {
-      // Disable this skill
       if (agent.configured_skills === null) {
-        // Currently all enabled, need to exclude this one
         const allSkills = Object.keys(matrixData.matrix[agentId] || {}).filter(
           k => matrixData.matrix[agentId][k] === true && k !== skillName
         )
         newSkills = allSkills
       } else {
-        // Remove from configured list
         newSkills = agent.configured_skills.filter(s => s !== skillName)
       }
     } else {
-      // Enable this skill
-      if (agent.configured_skills === null) {
-        // Already all enabled, no change needed
-        return
-      } else {
-        // Add to configured list
-        newSkills = [...agent.configured_skills, skillName]
-      }
+      if (agent.configured_skills === null) return
+      newSkills = [...agent.configured_skills, skillName]
     }
 
     await updateAgentSkills(agentId, newSkills)
   }
 
-  useEffect(() => {
-    loadMatrix()
-  }, [])
-
-  useEffect(() => {
-    if (selectedAgent) {
-      loadAgentDetail(selectedAgent)
-    }
-  }, [selectedAgent])
+  useEffect(() => { loadMatrix() }, [])
+  useEffect(() => { if (selectedAgent) loadAgentDetail(selectedAgent) }, [selectedAgent])
 
   if (loading) {
     return (
@@ -155,25 +132,23 @@ export function AgentSkillPage() {
   }
 
   if (!matrixData) {
-    return <div style={{ padding: 24 }}>Failed to load data</div>
+    return <div style={{ padding: 24 }}><Empty description={t('agent_skill.load_failed')} /></div>
   }
 
-  // Calculate statistics
   const totalAgents = matrixData.agents.length
   const totalSkills = matrixData.skills.length
-  const avgSkillsPerAgent = totalAgents > 0 
+  const avgSkillsPerAgent = totalAgents > 0
     ? (Object.values(matrixData.matrix).reduce((sum, agentSkills) => {
         return sum + Object.values(agentSkills).filter(v => v === true).length
       }, 0) / totalAgents).toFixed(1)
-    : 0
+    : '0'
 
-  // Matrix View
+  // ── Matrix View ──
   const renderMatrixView = () => {
-    const filteredAgents = matrixData.agents.filter(a => 
+    const filteredAgents = matrixData.agents.filter(a =>
       a.name.toLowerCase().includes(searchAgent.toLowerCase()) ||
       a.id.toLowerCase().includes(searchAgent.toLowerCase())
     )
-
     const filteredSkills = matrixData.skills.filter(s =>
       s.name.toLowerCase().includes(searchSkill.toLowerCase()) ||
       s.description.toLowerCase().includes(searchSkill.toLowerCase())
@@ -181,7 +156,7 @@ export function AgentSkillPage() {
 
     const columns: ColumnsType<{ skill: SkillInfo }> = [
       {
-        title: 'Skill',
+        title: t('agent_skill.skill'),
         dataIndex: ['skill', 'name'],
         key: 'skill',
         fixed: 'left',
@@ -189,7 +164,7 @@ export function AgentSkillPage() {
         render: (text: string, record: { skill: SkillInfo }) => (
           <div>
             <div style={{ fontWeight: 500 }}>{text}</div>
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>{record.skill.description}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{record.skill.description}</div>
           </div>
         )
       },
@@ -197,7 +172,7 @@ export function AgentSkillPage() {
         title: (
           <div style={{ minWidth: 80 }}>
             <div>{agent.name}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8' }}>{agent.model}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{agent.model}</div>
           </div>
         ),
         dataIndex: ['skill', 'name'],
@@ -206,17 +181,17 @@ export function AgentSkillPage() {
         render: (skillName: string) => {
           const value = matrixData.matrix[agent.id]?.[skillName]
           if (value === null || value === undefined) {
-            return <MinusOutlined style={{ color: '#6b7280' }} />
+            return <MinusOutlined style={{ color: 'var(--text-quaternary)' }} />
           }
           return (
-            <div 
+            <div
               style={{ cursor: 'pointer', display: 'flex', justifyContent: 'center' }}
               onClick={() => toggleSkill(agent.id, skillName, value === true)}
             >
               {value ? (
-                <CheckOutlined style={{ color: '#10b981', fontSize: 16 }} />
+                <CheckOutlined style={{ color: 'var(--color-success)', fontSize: 16 }} />
               ) : (
-                <CloseOutlined style={{ color: '#ef4444', fontSize: 16 }} />
+                <CloseOutlined style={{ color: 'var(--color-error)', fontSize: 16 }} />
               )}
             </div>
           )
@@ -229,7 +204,7 @@ export function AgentSkillPage() {
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={12}>
             <Input.Search
-              placeholder="Search agents..."
+              placeholder={t('agent_skill.search_agents')}
               value={searchAgent}
               onChange={e => setSearchAgent(e.target.value)}
               allowClear
@@ -237,7 +212,7 @@ export function AgentSkillPage() {
           </Col>
           <Col span={12}>
             <Input.Search
-              placeholder="Search skills..."
+              placeholder={t('agent_skill.search_skills')}
               value={searchSkill}
               onChange={e => setSearchSkill(e.target.value)}
               allowClear
@@ -255,53 +230,53 @@ export function AgentSkillPage() {
     )
   }
 
-  // Agent Dimension View
+  // ── Agent Dimension View ──
   const renderAgentView = () => {
-    const filteredAgents = matrixData.agents.filter(a => 
+    const filteredAgents = matrixData.agents.filter(a =>
       a.name.toLowerCase().includes(searchAgent.toLowerCase()) ||
       a.id.toLowerCase().includes(searchAgent.toLowerCase())
     )
 
     const agentColumns: ColumnsType<AgentInfo> = [
       {
-        title: 'Agent',
+        title: t('agent_skill.agent'),
         dataIndex: 'name',
         key: 'name',
         render: (text: string, record: AgentInfo) => (
           <div>
             <div style={{ fontWeight: 500 }}>{text}</div>
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>{record.id}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{record.id}</div>
           </div>
         )
       },
       {
-        title: 'Model',
+        title: t('agent_skill.model'),
         dataIndex: 'model',
         key: 'model',
         width: 150
       },
       {
-        title: 'Configured Skills',
+        title: t('agent_skill.configured'),
         dataIndex: 'configured_skills',
         key: 'configured_skills',
         width: 120,
         render: (skills: string[] | null) => (
           <Tag color={skills === null ? 'green' : 'blue'}>
-            {skills === null ? 'All' : skills.length}
+            {skills === null ? t('agent_skill.all') : skills.length}
           </Tag>
         )
       },
       {
-        title: 'Action',
+        title: t('app.action'),
         key: 'action',
         width: 80,
         render: (_: any, record: AgentInfo) => (
-          <Button 
-            size="small" 
+          <Button
+            size="small"
             type={selectedAgent === record.id ? 'primary' : 'default'}
             onClick={() => setSelectedAgent(record.id)}
           >
-            View
+            {t('app.view')}
           </Button>
         )
       }
@@ -311,7 +286,7 @@ export function AgentSkillPage() {
       <Row gutter={16}>
         <Col span={10}>
           <Input.Search
-            placeholder="Search agents..."
+            placeholder={t('agent_skill.search_agents')}
             value={searchAgent}
             onChange={e => setSearchAgent(e.target.value)}
             allowClear
@@ -328,44 +303,44 @@ export function AgentSkillPage() {
         </Col>
         <Col span={14}>
           {selectedAgent && agentDetail ? (
-            <Card 
-              title={`${agentDetail.agent_name} Skills`}
+            <Card
+              title={`${agentDetail.agent_name} ${t('agent_skill.skills')}`}
               extra={
                 <div>
-                  <Button 
-                    size="small" 
+                  <Button
+                    size="small"
                     onClick={() => updateAgentSkills(selectedAgent, '*')}
                     loading={updating}
                     style={{ marginRight: 8 }}
                   >
-                    Enable All
+                    {t('agent_skill.enable_all')}
                   </Button>
-                  <Button 
-                    size="small" 
+                  <Button
+                    size="small"
                     danger
                     onClick={() => updateAgentSkills(selectedAgent, [])}
                     loading={updating}
                   >
-                    Disable All
+                    {t('agent_skill.disable_all')}
                   </Button>
                 </div>
               }
             >
               <div style={{ maxHeight: 600, overflowY: 'auto' }}>
                 {agentDetail.available_skills.map(skill => (
-                  <div 
+                  <div
                     key={skill.name}
-                    style={{ 
-                      display: 'flex', 
+                    style={{
+                      display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '8px 0',
-                      borderBottom: '1px solid #2e2e42'
+                      borderBottom: '1px solid var(--border-default)'
                     }}
                   >
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 500 }}>{skill.name}</div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>{skill.description}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{skill.description}</div>
                     </div>
                     <Switch
                       checked={skill.enabled}
@@ -378,9 +353,7 @@ export function AgentSkillPage() {
             </Card>
           ) : (
             <Card>
-              <div style={{ textAlign: 'center', color: '#94a3b8', padding: 40 }}>
-                Select an agent to view and manage skills
-              </div>
+              <Empty description={t('agent_skill.select_hint')} />
             </Card>
           )}
         </Col>
@@ -388,7 +361,7 @@ export function AgentSkillPage() {
     )
   }
 
-  // Skill Dimension View
+  // ── Skill Dimension View ──
   const renderSkillView = () => {
     const filteredSkills = matrixData.skills.filter(s =>
       s.name.toLowerCase().includes(searchSkill.toLowerCase()) ||
@@ -397,18 +370,18 @@ export function AgentSkillPage() {
 
     const skillColumns: ColumnsType<SkillInfo> = [
       {
-        title: 'Skill',
+        title: t('agent_skill.skill'),
         dataIndex: 'name',
         key: 'name',
         render: (text: string, record: SkillInfo) => (
           <div>
             <div style={{ fontWeight: 500 }}>{text}</div>
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>{record.description}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{record.description}</div>
           </div>
         )
       },
       {
-        title: 'Source',
+        title: t('agent_skill.source'),
         dataIndex: 'source',
         key: 'source',
         width: 120,
@@ -419,7 +392,7 @@ export function AgentSkillPage() {
         )
       },
       {
-        title: 'Agents',
+        title: t('agent_skill.agents_count'),
         key: 'agents',
         width: 100,
         render: (_: any, record: SkillInfo) => {
@@ -430,23 +403,23 @@ export function AgentSkillPage() {
         }
       },
       {
-        title: 'Action',
+        title: t('app.action'),
         key: 'action',
         width: 80,
         render: (_: any, record: SkillInfo) => (
-          <Button 
-            size="small" 
+          <Button
+            size="small"
             type={selectedSkill === record.name ? 'primary' : 'default'}
             onClick={() => setSelectedSkill(record.name)}
           >
-            View
+            {t('app.view')}
           </Button>
         )
       }
     ]
 
     const selectedSkillInfo = selectedSkill ? matrixData.skills.find(s => s.name === selectedSkill) : null
-    const agentsWithSelectedSkill = selectedSkill 
+    const agentsWithSelectedSkill = selectedSkill
       ? matrixData.agents.filter(a => matrixData.matrix[a.id]?.[selectedSkill] !== null)
       : []
 
@@ -454,7 +427,7 @@ export function AgentSkillPage() {
       <Row gutter={16}>
         <Col span={10}>
           <Input.Search
-            placeholder="Search skills..."
+            placeholder={t('agent_skill.search_skills')}
             value={searchSkill}
             onChange={e => setSearchSkill(e.target.value)}
             allowClear
@@ -471,41 +444,41 @@ export function AgentSkillPage() {
         </Col>
         <Col span={14}>
           {selectedSkill && selectedSkillInfo ? (
-            <Card title={`${selectedSkillInfo.name} Agents`}>
+            <Card title={`${selectedSkillInfo.name} - ${t('agent_skill.agents_with_skill')}`}>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 500 }}>Description</div>
-                <div style={{ color: '#94a3b8' }}>{selectedSkillInfo.description}</div>
+                <div style={{ fontWeight: 500 }}>{t('agent_skill.description')}</div>
+                <div style={{ color: 'var(--text-secondary)' }}>{selectedSkillInfo.description}</div>
               </div>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 500 }}>Source</div>
+                <div style={{ fontWeight: 500 }}>{t('agent_skill.source')}</div>
                 <Tag color={selectedSkillInfo.source === 'openclaw-bundled' ? 'green' : 'blue'}>
                   {selectedSkillInfo.source}
                 </Tag>
               </div>
-              <div style={{ fontWeight: 500, marginBottom: 8 }}>Agents with this skill</div>
+              <div style={{ fontWeight: 500, marginBottom: 8 }}>{t('agent_skill.agents_with_skill')}</div>
               <div style={{ maxHeight: 450, overflowY: 'auto' }}>
                 <Table
                   dataSource={agentsWithSelectedSkill}
                   columns={[
                     {
-                      title: 'Agent',
+                      title: t('agent_skill.agent'),
                       dataIndex: 'name',
                       key: 'name',
                       render: (text: string, record: AgentInfo) => (
                         <div>
                           <div style={{ fontWeight: 500 }}>{text}</div>
-                          <div style={{ fontSize: 12, color: '#94a3b8' }}>{record.id}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{record.id}</div>
                         </div>
                       )
                     },
                     {
-                      title: 'Model',
+                      title: t('agent_skill.model'),
                       dataIndex: 'model',
                       key: 'model',
                       width: 150
                     },
                     {
-                      title: 'Enabled',
+                      title: t('agent_skill.enabled'),
                       key: 'enabled',
                       width: 100,
                       render: (_: any, record: AgentInfo) => {
@@ -528,9 +501,7 @@ export function AgentSkillPage() {
             </Card>
           ) : (
             <Card>
-              <div style={{ textAlign: 'center', color: '#94a3b8', padding: 40 }}>
-                Select a skill to view which agents have it installed
-              </div>
+              <Empty description={t('agent_skill.select_skill_hint')} />
             </Card>
           )}
         </Col>
@@ -539,51 +510,37 @@ export function AgentSkillPage() {
   }
 
   const tabItems = [
-    {
-      key: 'matrix',
-      label: 'Matrix View',
-      children: renderMatrixView()
-    },
-    {
-      key: 'agent',
-      label: 'Agent Dimension',
-      children: renderAgentView()
-    },
-    {
-      key: 'skill',
-      label: 'Skill Dimension',
-      children: renderSkillView()
-    }
+    { key: 'matrix', label: t('agent_skill.matrix_view') },
+    { key: 'agent', label: t('agent_skill.agent_dim') },
+    { key: 'skill', label: t('agent_skill.skill_dim') },
   ]
 
   return (
     <div>
       <div className="page-header">
-        <p className="page-header-eyebrow">Agent Management</p>
-        <h1>Agent-Skill Management</h1>
-        <p className="page-header-desc">Manage agent capabilities and skill assignments</p>
+        <p className="page-eyebrow">{t('agent_skill.eyebrow')}</p>
+        <h1 className="page-title">{t('agent_skill.title')}</h1>
+        <p className="page-subtitle">{t('agent_skill.subtitle')}</p>
       </div>
-      
-      {/* Statistics */}
+
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={8}>
           <Card>
-            <Statistic title="Total Agents" value={totalAgents} />
+            <Statistic title={t('agent_skill.total_agents')} value={totalAgents} prefix={<TeamOutlined />} />
           </Card>
         </Col>
         <Col span={8}>
           <Card>
-            <Statistic title="Total Skills" value={totalSkills} />
+            <Statistic title={t('agent_skill.total_skills')} value={totalSkills} prefix={<AppstoreOutlined />} />
           </Card>
         </Col>
         <Col span={8}>
           <Card>
-            <Statistic title="Avg Skills/Agent" value={avgSkillsPerAgent} />
+            <Statistic title={t('agent_skill.avg_skills')} value={avgSkillsPerAgent} />
           </Card>
         </Col>
       </Row>
 
-      {/* Tabs */}
       <Tabs defaultActiveKey="matrix" items={tabItems} />
     </div>
   )
