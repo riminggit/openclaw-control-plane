@@ -17,6 +17,21 @@ router = APIRouter(prefix="/api/workflow", tags=["workflow"])
 
 # ── Schemas ───────────────────────────────────────────────
 
+class CreateTaskRequest(BaseModel):
+    project_id: str
+    title: str
+    description: Optional[str] = None
+    category: str = "general"
+    phase: Optional[str] = None
+    priority: str = "medium"
+    status: str = "planned"
+    owner_role: Optional[str] = None
+    owner_agent_id: Optional[str] = None
+    risk_level: str = "low"
+    due_at: Optional[str] = None
+    source_channel: Optional[str] = None
+    estimated_duration_seconds: Optional[int] = None
+
 class ReviewRequest(BaseModel):
     decision: str = Field(..., pattern=r"^(approve|reject)$")
     comment: Optional[str] = None
@@ -31,6 +46,73 @@ class DispatchRequest(BaseModel):
 
 class InterventionRequest(BaseModel):
     reason: Optional[str] = None
+
+
+# ── List & Create ─────────────────────────────────────────
+
+@router.get("/tasks")
+def list_tasks(
+    project_id: Optional[str] = None,
+    status: Optional[str] = None,
+    owner_role: Optional[str] = None,
+    category: Optional[str] = None,
+    priority: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Task)
+    if project_id:
+        q = q.filter(Task.project_id == project_id)
+    if status:
+        q = q.filter(Task.status == status)
+    if owner_role:
+        q = q.filter(Task.owner_role == owner_role)
+    if category:
+        q = q.filter(Task.category == category)
+    if priority:
+        q = q.filter(Task.priority == priority)
+
+    total = q.count()
+    items = q.order_by(Task.updated_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    def _td(t):
+        return {"id": t.id, "projectId": t.project_id, "title": t.title, "description": t.description,
+                "category": t.category, "phase": t.phase, "priority": t.priority, "status": t.status,
+                "ownerRole": t.owner_role or "", "ownerAgentId": t.owner_agent_id, "riskLevel": t.risk_level,
+                "docSyncRisk": "low" if not t.doc_sync_risk else "high", "createdAt": t.created_at, "updatedAt": t.updated_at}
+    return {"items": [_td(t) for t in items], "total": total, "page": page, "page_size": page_size}
+
+
+@router.post("/tasks", status_code=201)
+def create_task(body: CreateTaskRequest, db: Session = Depends(get_db)):
+    now = datetime.now(timezone.utc).isoformat()
+    task_id = f"task-{__import__('uuid').uuid4().hex[:12]}"
+    task = Task(
+        id=task_id,
+        project_id=body.project_id,
+        title=body.title,
+        description=body.description,
+        category=body.category,
+        phase=body.phase,
+        priority=body.priority,
+        status=body.status,
+        owner_role=body.owner_role,
+        owner_agent_id=body.owner_agent_id,
+        risk_level=body.risk_level,
+        due_at=body.due_at,
+        source_channel=body.source_channel,
+        estimated_duration_seconds=body.estimated_duration_seconds,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return {"id": task.id, "projectId": task.project_id, "title": task.title, "description": task.description,
+            "category": task.category, "phase": task.phase, "priority": task.priority, "status": task.status,
+            "ownerRole": task.owner_role or "", "ownerAgentId": task.owner_agent_id, "riskLevel": task.risk_level,
+            "docSyncRisk": "low" if not task.doc_sync_risk else "high", "createdAt": task.created_at, "updatedAt": task.updated_at}
 
 
 # ── Review Gate ───────────────────────────────────────────

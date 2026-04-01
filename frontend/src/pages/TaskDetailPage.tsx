@@ -2,8 +2,21 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { tasksApi } from '../api/modules/tasks'
 import { useTranslation } from 'react-i18next'
-import { Button, Tabs, Card, Empty, Spin, Popconfirm } from 'antd'
+import { Button, Tabs, Card, Empty, Spin, Popconfirm, Tag, Timeline, Descriptions } from 'antd'
+import { AgentThoughtPanel } from '../components/AgentThoughtPanel'
+import { TaskProgressPanel } from '../components/TaskProgressPanel'
+import { apiGet } from '../api/client'
 
+const priorityColors: Record<string, string> = { high: 'red', medium: 'orange', low: 'green' }
+const statusColors: Record<string, string> = {
+  planned: 'default', approved: 'processing', dispatched: 'processing',
+  in_progress: 'processing', review: 'warning', blocked: 'error',
+  stopped: 'default', done: 'success', cancelled: 'default', rejected: 'error',
+}
+
+interface Transition {
+  id: string; from: string; to: string; actor: string; reason: string; created_at: string
+}
 
 export function TaskDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -12,7 +25,9 @@ export function TaskDetailPage() {
   const [task, setTask] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'info' | 'history'>('info')
+  const [activeTab, setActiveTab] = useState<string>('info')
+  const [transitions, setTransitions] = useState<Transition[]>([])
+  const [transLoading, setTransLoading] = useState(false)
 
   const fetchTask = async () => {
     if (!id) return
@@ -23,13 +38,27 @@ export function TaskDetailPage() {
     finally { setLoading(false) }
   }
 
+  const fetchTransitions = async () => {
+    if (!id) return
+    setTransLoading(true)
+    try {
+      const res = await apiGet<{ task_id: string; current_status: string; transitions: Transition[] }>(
+        `/workflow/tasks/${id}/transitions`
+      )
+      setTransitions(res.transitions || [])
+    } catch { setTransitions([]) }
+    finally { setTransLoading(false) }
+  }
+
   useEffect(() => { fetchTask() }, [id])
+  useEffect(() => { if (id) fetchTransitions() }, [id])
 
   const handleAction = async (action: string) => {
     if (!task) return
     try {
       await tasksApi.action(task.id, action)
       fetchTask()
+      fetchTransitions()
     } catch (e: any) { setError(e.message) }
   }
 
@@ -42,7 +71,6 @@ export function TaskDetailPage() {
   if (error) return <div className="card"><div className="empty-state"><div className="empty-icon">⚠️</div><div className="empty-state-title">{t('app.error')}</div><p>{error}</p></div></div>
   if (!task) return null
 
-  // Determine available actions based on current status
   const actions: { key: string; label: string; style: string; show: boolean }[] = [
     { key: 'start', label: t('task_action.start'), style: 'btn btn-primary', show: task.status === 'planned' },
     { key: 'review', label: t('task_action.review'), style: 'btn btn-secondary', show: task.status === 'in_progress' },
@@ -53,6 +81,13 @@ export function TaskDetailPage() {
   ]
   const visibleActions = actions.filter(a => a.show)
 
+  const tabItems = [
+    { key: 'info', label: t('tasks.detail.info', '基本信息') },
+    { key: 'progress', label: t('tasks.detail.progress', '进度') },
+    { key: 'thoughts', label: t('tasks.detail.thoughts', '思考链路') },
+    { key: 'history', label: t('tasks.detail.status_history', '状态历史') },
+  ]
+
   return (
     <div>
       <div className="detail-header">
@@ -60,8 +95,10 @@ export function TaskDetailPage() {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', flexWrap: 'wrap', flex: 1 }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{task.title}</h1>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className={`badge badge-${task.status}`}>{String(t(`status.${task.status}`, task.status))}</span>
-            <span className={`badge badge-${task.priority}`}>{String(t(`priority.${task.priority}`, task.priority))}</span>
+            <Tag color={statusColors[task.status] || 'default'}>{String(t(`status.${task.status}`, task.status))}</Tag>
+            <Tag color={priorityColors[task.priority] || 'default'}>{String(t(`priority.${task.priority}`, task.priority))}</Tag>
+            {task.category && <Tag>{task.category}</Tag>}
+            {task.phase && <Tag color="blue">{task.phase}</Tag>}
           </div>
         </div>
       </div>
@@ -79,83 +116,119 @@ export function TaskDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="tabs">
-        {(['info', 'history'] as const).map(tab => (
-          <Button key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
-            {tab === 'info' ? t('tasks.detail.info') : t('tasks.detail.status_history')}
-          </Button>
-        ))}
-      </div>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={tabItems.map(tab => ({ key: tab.key, label: tab.label }))}
+        style={{ marginBottom: 'var(--space-4)' }}
+      />
 
+      {/* Info Tab */}
       {activeTab === 'info' && (
-        <div className="card">
-          {/* Description */}
-          <div style={{ marginBottom: 'var(--space-6)' }}>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 'var(--space-2)', color: 'var(--text-secondary)' }}>{t('tasks.detail.description')}</h3>
+        <>
+          <Card title={t('tasks.detail.description', '描述')} style={{ marginBottom: 16 }}>
             {task.description ? (
-              <div style={{ background: 'var(--bg-secondary)', padding: 'var(--space-4)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                {task.description}
-              </div>
+              <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{task.description}</div>
             ) : (
-              <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('tasks.detail.no_description')}</p>
+              <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('tasks.detail.no_description')}</span>
             )}
-          </div>
+          </Card>
 
-          {/* Metadata Grid */}
-          <div className="detail-meta">
-            <div className="detail-meta-item">
-              <div className="label">{t('tasks.project')}</div>
-              <div className="value">
-                {task.projectName ? (
-                  <Link to={`/projects/${task.projectId}`} className="link">{task.projectCode} — {task.projectName}</Link>
-                ) : (
-                  <span className="mono">{task.projectId?.slice(0, 8)}</span>
-                )}
-              </div>
-            </div>
-            <div className="detail-meta-item">
-              <div className="label">{t('tasks.detail.category')}</div>
-              <div className="value">{task.category || '—'}</div>
-            </div>
-            <div className="detail-meta-item">
-              <div className="label">{t('tasks.detail.phase')}</div>
-              <div className="value">{task.phase || '—'}</div>
-            </div>
-            <div className="detail-meta-item">
-              <div className="label">{t('tasks.owner')}</div>
-              <div className="value">{task.ownerRole || '—'}</div>
-            </div>
-            <div className="detail-meta-item">
-              <div className="label">{t('tasks.status')}</div>
-              <div className="value"><span className={`badge badge-${task.status}`}>{String(t(`status.${task.status}`, task.status))}</span></div>
-            </div>
-            <div className="detail-meta-item">
-              <div className="label">{t('tasks.priority')}</div>
-              <div className="value"><span className={`badge badge-${task.priority}`}>{String(t(`priority.${task.priority}`, task.priority))}</span></div>
-            </div>
-            <div className="detail-meta-item">
-              <div className="label">{t('tasks.detail.risk')}</div>
-              <div className="value">{task.riskLevel || '—'}</div>
-            </div>
-            <div className="detail-meta-item">
-              <div className="label">{t('app.created')}</div>
-              <div className="value">{task.createdAt ? new Date(task.createdAt).toLocaleString() : '—'}</div>
-            </div>
-            <div className="detail-meta-item">
-              <div className="label">{t('app.updated')}</div>
-              <div className="value">{new Date(task.updatedAt).toLocaleString()}</div>
-            </div>
-          </div>
-        </div>
+          <Card title="基本信息" style={{ marginBottom: 16 }}>
+            <Descriptions column={2} size="small" bordered>
+              <Descriptions.Item label={t('tasks.project')}>{task.projectCode} — {task.projectName || task.projectId?.slice(0, 8)}</Descriptions.Item>
+              <Descriptions.Item label={t('tasks.detail.category')}>{task.category || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('tasks.detail.phase')}>{task.phase || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('tasks.owner')}>{task.ownerRole || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Agent">{task.ownerAgentId || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('tasks.detail.risk')}>{task.riskLevel || '—'}</Descriptions.Item>
+              <Descriptions.Item label="审核门控">{task.reviewGateStatus || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('app.created')}>{task.createdAt ? new Date(task.createdAt).toLocaleString() : '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('app.updated')}>{new Date(task.updatedAt).toLocaleString()}</Descriptions.Item>
+              <Descriptions.Item label="来源">{task.sourceChannel || '—'}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+
+          {/* Review Gate Section */}
+          {transitions.some(tr => tr.from === 'in_progress' && tr.to === 'review') && (
+            <Card title="审核记录" style={{ marginBottom: 16 }}>
+              <Timeline
+                items={transitions
+                  .filter(tr => ['review', 'approved', 'rejected'].includes(tr.to))
+                  .map(tr => ({
+                    color: tr.to === 'approved' ? 'green' : tr.to === 'rejected' ? 'red' : 'blue',
+                    children: (
+                      <div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <Tag color={tr.to === 'approved' ? 'green' : tr.to === 'rejected' ? 'red' : 'blue'}>
+                            {tr.to}
+                          </Tag>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {tr.actor} · {tr.created_at ? new Date(tr.created_at).toLocaleString() : ''}
+                          </span>
+                        </div>
+                        {tr.reason && <div style={{ fontSize: 13, marginTop: 4 }}>{tr.reason}</div>}
+                      </div>
+                    ),
+                  }))}
+              />
+            </Card>
+          )}
+
+          {/* Dispatch Info */}
+          {task.ownerAgentId && (
+            <Card title="分派信息" style={{ marginBottom: 16 }}>
+              <Descriptions column={2} size="small" bordered>
+                <Descriptions.Item label="目标 Agent">{task.ownerAgentId}</Descriptions.Item>
+                <Descriptions.Item label="分派模式">{task.assigneeSessionKey ? 'sessions_spawn' : 'direct'}</Descriptions.Item>
+                <Descriptions.Item label="最近分派">{task.lastDispatchAt ? new Date(task.lastDispatchAt).toLocaleString() : '—'}</Descriptions.Item>
+              </Descriptions>
+            </Card>
+          )}
+        </>
       )}
 
+      {/* Progress Tab */}
+      {activeTab === 'progress' && (
+        <Card title="任务进度">
+          <TaskProgressPanel taskId={id!} />
+        </Card>
+      )}
+
+      {/* Thoughts Tab */}
+      {activeTab === 'thoughts' && (
+        <Card title="思考链路">
+          <AgentThoughtPanel taskId={id!} />
+        </Card>
+      )}
+
+      {/* History Tab */}
       {activeTab === 'history' && (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-icon">📜</div>
-            <p style={{ color: 'var(--text-muted)' }}>{t('tasks.detail.no_history')}</p>
-          </div>
-        </div>
+        <Card title="状态转换历史">
+          {transLoading ? <Spin style={{ display: 'block', margin: '20px auto' }} /> :
+            transitions.length === 0 ? (
+              <Empty description="暂无状态变更记录" style={{ padding: 24 }} />
+            ) : (
+              <Timeline
+                items={transitions.map(tr => ({
+                  color: tr.to === 'done' ? 'green' : tr.to === 'blocked' || tr.to === 'cancelled' || tr.to === 'rejected' ? 'red' : 'blue',
+                  children: (
+                    <div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                        <Tag>{tr.from}</Tag>
+                        <span>→</span>
+                        <Tag color={statusColors[tr.to] || 'default'}>{tr.to}</Tag>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {tr.actor} · {tr.created_at ? new Date(tr.created_at).toLocaleString() : ''}
+                      </div>
+                      {tr.reason && <div style={{ fontSize: 13, marginTop: 4, color: 'var(--text-secondary)' }}>{tr.reason}</div>}
+                    </div>
+                  ),
+                }))}
+              />
+            )}
+        </Card>
       )}
     </div>
   )

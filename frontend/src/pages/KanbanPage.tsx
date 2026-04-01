@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { DragDropContext, Droppable, Draggable, type DropResult, type DragStart } from '@hello-pangea/dnd'
 import { tasksApi, type TaskItem } from '../api/modules/tasks'
+import { apiPost } from '../api/client'
 import { gatewayClient } from '../lib/gateway-client'
 import { useConnectionState } from '../hooks/useGateway'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +23,7 @@ interface RunningTask {
   taskId: string
   title: string
   agentId?: string
+  sessionKey?: string
   startedAt: number
   status: string // 'running' | 'completed' | 'error'
   progress: number // 0-100
@@ -393,26 +395,36 @@ export function KanbanPage() {
       await tasksApi.update(task.id, { status: 'running' })
     } catch { /* ignore */ }
 
-    // Try to send message to agent via Gateway
+    // Resolve existing session for the target agent, or create one
+    const msg = task.description || task.title
     try {
-      await gatewayClient.call('chat.send', {
-        agent: agentId,
-        message: task.description || task.title,
-        taskId: task.id,
-      })
-    } catch {
-      // Fallback: try cron.trigger approach
-      try {
-        await gatewayClient.call('agent.run', {
-          taskId: task.id,
-          agentId,
-          message: task.description || task.title,
+      // Step 1: resolve session by agentId
+      const sessions = await gatewayClient.call('sessions.resolve', { agentId })
+      const sessionKey = sessions?.sessionKey || sessions?.key
+      if (sessionKey) {
+        // Update the running task with sessionKey for event matching
+        setRunningTasks(prev => prev.map(r => r.taskId === task.id ? { ...r, sessionKey } : r))
+        // Step 2: send message via sessions.send
+        await gatewayClient.call('sessions.send', {
+          key: sessionKey,
+          message: msg,
+          idempotencyKey: `kanban-${task.id}-${Date.now()}`,
         })
-      } catch (e: any) {
-        message.error(t('kanban.executeFailed', '执行失败') + ': ' + (e.message || ''))
-        setRunningTasks(prev => prev.filter(r => r.taskId !== task.id))
-        setExecutingIds(prev => { const n = new Set(prev); n.delete(task.id); return n })
+      } else {
+        // No session found, create one with the message
+        const created = await gatewayClient.call('sessions.create', {
+          agentId,
+          message: msg,
+        })
+        const newSessionKey = created?.sessionKey || created?.key
+        if (newSessionKey) {
+          setRunningTasks(prev => prev.map(r => r.taskId === task.id ? { ...r, sessionKey: newSessionKey } : r))
+        }
       }
+    } catch (e: any) {
+      message.error(t('kanban.executeFailed', '执行失败') + ': ' + (e.message || ''))
+      setRunningTasks(prev => prev.filter(r => r.taskId !== task.id))
+      setExecutingIds(prev => { const n = new Set(prev); n.delete(task.id); return n })
     }
 
     setTimeout(fetchData, 1000)
@@ -460,7 +472,8 @@ export function KanbanPage() {
   }
   const handleCreateTask = async (values: any) => {
     try {
-      await tasksApi.create(values)
+      // New tasks go through workflow API
+      await apiPost('/workflow/tasks', values)
       setCreateModalOpen(false)
       createForm.resetFields()
       fetchData()
