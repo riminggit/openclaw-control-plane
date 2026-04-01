@@ -1,5 +1,6 @@
 # OpenClaw Control Plane — 工作流管理系统 PRD
 
+> **⚠️ 已冻结 v1.0.0-frozen** — 变更需走需求变更支线流程（见 `docs/rd-team-workflow.md`）
 > **项目**：openclaw-control-plane  
 > **模块**：工作流管理系统（Workflow Management System）  
 > **版本**：v1.0  
@@ -904,9 +905,351 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
 
 ---
 
-## 6. 审核节点交互
+## 6. 工作流模板示例
 
-### 6.1 审核触发条件
+### 6.1 研发流水线工作流（20 步主线流程）
+
+基于 `rd-team-workflow.md` 定义的 20 步研发流水线，以下是完整的工作流模板 YAML 定义：
+
+```yaml
+name: 研发流水线-标准流程
+version: v1.0
+description: 完整的 20 步研发流水线，从需求分析到最终交付
+
+global_config:
+  single_step_timeout: 30m
+  workflow_timeout: 24h
+  max_retries: 3
+  failure_strategy: escalate
+
+steps:
+  # 阶段一：需求
+  - id: step1_requirements_analysis
+    name: 需求分析
+    agent: rd-product-researcher
+    estimated_duration: 60m
+    output: docs/requirements.md
+    validation:
+      - 四部分完整（功能/非功能/边界/异常）
+    human_review: false
+    depends_on: []
+  
+  - id: step2_requirements_validation
+    name: 需求验证
+    agent: rd-commander
+    estimated_duration: 30m
+    input:
+      - step1_requirements_analysis.output
+    validation:
+      - 四部分完整
+      - 符合SMART原则
+    human_review: false
+    depends_on: [step1_requirements_analysis]
+  
+  - id: step3_prd_creation
+    name: PRD 编写
+    agent: rd-product-manager
+    estimated_duration: 120m
+    input:
+      - step1_requirements_analysis.output
+      - step2_requirements_validation.output
+    output: docs/prd.md
+    human_review: true  # 关键审核点
+    depends_on: [step2_requirements_validation]
+  
+  - id: step4_prd_review
+    name: PRD 评审
+    agent: rd-pm-checker
+    estimated_duration: 60m
+    input:
+      - step3_prd_creation.output
+    validation:
+      - 优先级划分合理
+      - API 端点完整
+      - 数据模型清晰
+    human_review: true
+    depends_on: [step3_prd_creation]
+  
+  # 阶段二：设计
+  - id: step5_design
+    name: UI + 架构 + 数据库设计
+    parallel:
+      - id: ui_design
+        agent: ui-designer
+        checker: ui-checker  # 互审方
+        estimated_duration: 90m
+        output: docs/ui-design.md
+        review_required: true
+        min_issues: 3  # 互审方必须提出 ≥3 个问题
+        validation:
+          - UI 规范一致性
+          - 交互流程完整
+      
+      - id: arch_design
+        agent: rd-backend-arch
+        estimated_duration: 90m
+        output: docs/architecture.md
+        validation:
+          - 技术栈合理
+          - 扩展性良好
+      
+      - id: db_design
+        agent: rd-dba
+        checker: dba-checker  # 互审方
+        estimated_duration: 60m
+        output: docs/database-design.md
+        review_required: true
+        min_issues: 3  # 互审方必须提出 ≥3 个问题
+        validation:
+          - 表结构规范
+          - 索引设计合理
+    depends_on: [step4_prd_review]
+  
+  - id: step6_design_review
+    name: 设计评审
+    agent: rd-commander
+    estimated_duration: 60m
+    input:
+      - step5_design.parallel.ui_design.output
+      - step5_design.parallel.arch_design.output
+      - step5_design.parallel.db_design.output
+    human_review: true
+    depends_on: [step5_design]
+  
+  # 阶段三：开发
+  - id: step7_backend_scaffold
+    name: 后端脚手架搭建
+    agent: rd-backend-dev
+    estimated_duration: 60m
+    output: backend/
+    depends_on: [step6_design_review]
+  
+  - id: step8_backend_core
+    name: 后端核心功能开发
+    agent: rd-backend-dev
+    estimated_duration: 240m
+    input:
+      - step7_backend_scaffold.output
+      - step5_design.parallel.arch_design.output
+    output: backend/core/
+    depends_on: [step7_backend_scaffold]
+  
+  - id: step9_frontend_scaffold
+    name: 前端脚手架搭建
+    agent: rd-frontend-dev
+    estimated_duration: 60m
+    output: frontend/
+    depends_on: [step6_design_review]
+  
+  - id: step10_frontend_core
+    name: 前端核心功能开发
+    agent: rd-frontend-dev
+    estimated_duration: 240m
+    input:
+      - step9_frontend_scaffold.output
+      - step5_design.parallel.ui_design.output
+    output: frontend/core/
+    depends_on: [step9_frontend_scaffold]
+  
+  # 阶段四：审核
+  - id: step11_code_review
+    name: 多轮 Code Review
+    agent: rd-backend-arch
+    estimated_duration: 120m
+    input:
+      - step8_backend_core.output
+      - step10_frontend_core.output
+    min_rounds: 2
+    max_rounds: 4
+    validation:
+      - 代码规范
+      - 性能优化
+      - 安全检查
+    human_review: true
+    depends_on: [step8_backend_core, step10_frontend_core]
+  
+  - id: step12_walkthrough
+    name: 首次走查
+    parallel:
+      - id: product_walkthrough
+        agents: [rd-product-manager, rd-pm-checker]  # 双产品走查
+        estimated_duration: 60m
+        input:
+          - step3_prd_creation.output
+          - step8_backend_core.output
+          - step10_frontend_core.output
+        validation:
+          - 产品验收逐条核对 PRD
+          - 功能完整性检查
+          - 用户体验评估
+      
+      - id: ui_walkthrough
+        agents: [ui-designer, ui-checker]  # 双 UI 走查
+        estimated_duration: 60m
+        input:
+          - step5_design.parallel.ui_design.output
+          - step10_frontend_core.output
+        validation:
+          - UI 设计还原度
+          - 交互流程一致性
+          - 响应式适配
+    human_review: true
+    depends_on: [step11_code_review]
+  
+  # 阶段五：联调测试
+  - id: step13_integration
+    name: 前后端联调验证
+    agent: rd-backend-dev
+    estimated_duration: 120m
+    input:
+      - step8_backend_core.output
+      - step10_frontend_core.output
+    validation:
+      - API 联调通过
+      - 数据流正确
+    depends_on: [step12_walkthrough]
+  
+  - id: step14_submit_test
+    name: 送测 + 自动提交 GitHub
+    agent: devops
+    estimated_duration: 30m
+    input:
+      - step13_integration.output
+    output:
+      - github_pr_url
+      - test_build_artifact
+    depends_on: [step13_integration]
+  
+  - id: step15_test_write
+    name: 测试编写
+    agent: rd-tester-auto
+    estimated_duration: 180m
+    input:
+      - step14_submit_test.output
+      - step3_prd_creation.output
+    output: tests/
+    depends_on: [step14_submit_test]
+  
+  - id: step16_test_validation
+    name: 测试验证
+    agent: rd-tester-func
+    estimated_duration: 120m
+    input:
+      - step15_test_write.output
+    validation:
+      - 覆盖率 ≥ 80%
+      - 所有测试通过
+    depends_on: [step15_test_write]
+  
+  - id: step17_test_loop
+    name: 测试循环（Bug 修复 + 验证）
+    agent: rd-backend-dev
+    estimated_duration: 240m
+    min_rounds: 3
+    max_rounds: 6
+    input:
+      - step16_test_validation.output
+    validation:
+      - Bug 修复完成
+      - 回归测试通过
+    depends_on: [step16_test_validation]
+  
+  # 阶段六：交付
+  - id: step18_final_review
+    name: 最终评审
+    agent: rd-commander
+    estimated_duration: 60m
+    input:
+      - step17_test_loop.output
+      - step3_prd_creation.output
+    human_review: true
+    depends_on: [step17_test_loop]
+  
+  - id: step19_documentation
+    name: 文档编写
+    agent: rd-product-manager
+    estimated_duration: 90m
+    input:
+      - step18_final_review.output
+    output:
+      - docs/user-guide.md
+      - docs/api-docs.md
+      - docs/deployment-guide.md
+    depends_on: [step18_final_review]
+  
+  - id: step20_release
+    name: 发布上线
+    agent: devops
+    estimated_duration: 60m
+    input:
+      - step19_documentation.output
+    output:
+      - release_tag
+      - production_url
+    depends_on: [step19_documentation]
+```
+
+### 6.2 关键步骤说明
+
+#### 6.2.1 Step 5：设计互审机制
+
+**互审要求**：
+- **UI 设计互审**：ui-designer（执行）↔ ui-checker（互审）
+  - 互审方必须提出 ≥3 个问题
+  - 验证 UI 规范一致性、交互流程完整性
+  
+- **数据库设计互审**：rd-dba（执行）↔ dba-checker（互审）
+  - 互审方必须提出 ≥3 个问题
+  - 验证表结构规范、索引设计合理性
+
+**互审流程**：
+```
+设计完成 → 提交互审 → 互审方审核 → 提出问题 → 设计者修改 → 再次审核 → 通过
+```
+
+#### 6.2.2 Step 12：双走查机制
+
+**双走查要求**：
+- **双产品走查**：rd-product-manager + rd-pm-checker
+  - 产品验收逐条核对 PRD
+  - 功能完整性检查
+  - 用户体验评估
+  
+- **双 UI 走查**：ui-designer + ui-checker
+  - UI 设计还原度检查
+  - 交互流程一致性验证
+  - 响应式适配检查
+
+**走查流程**：
+```
+并行走查 → 双方独立审核 → 合并问题列表 → 开发修复 → 二次确认 → 通过
+```
+
+### 6.3 模板使用规范
+
+1. **必填字段**：
+   - `id`：步骤唯一标识
+   - `name`：步骤名称
+   - `agent`：执行的 Agent（单个或多个）
+   - `depends_on`：依赖的步骤列表
+
+2. **可选字段**：
+   - `checker`：互审方 Agent（用于设计互审等场景）
+   - `review_required`：是否需要互审
+   - `min_issues`：互审方必须提出的最少问题数
+   - `parallel`：并行执行的子步骤
+   - `human_review`：是否需要人工审核
+
+3. **验证规则**：
+   - 互审步骤必须指定 `checker` 字段
+   - 互审步骤的 `min_issues` 默认为 3
+   - 并行步骤必须在 `parallel` 字段下定义
+
+---
+
+## 7. 审核节点交互
+
+### 7.1 审核触发条件
 
 审核节点在工作流执行到该步骤时自动触发：
 
@@ -924,7 +1267,7 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
     等待审核人操作
 ```
 
-### 6.2 审核界面设计
+### 7.2 审核界面设计
 
 #### 6.2.1 审核弹窗布局
 
@@ -989,7 +1332,7 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
   - 其他：显示文件信息 + 下载按钮
 - 支持全屏查看
 
-### 6.3 审核操作
+### 7.3 审核操作
 
 #### 6.3.1 Approve（通过）
 
@@ -1021,7 +1364,7 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
 | **处理后** | 步骤状态保持 `awaiting_review`，工作流状态 → `paused` |
 | **后续** | Agent 根据反馈修改 → 重新提交审核 → 审核人再次审核 |
 
-### 6.4 审核超时处理
+### 7.4 审核超时处理
 
 #### 6.4.1 超时配置
 
@@ -1060,7 +1403,7 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
 通知相关人员
 ```
 
-### 6.5 审核历史
+### 7.5 审核历史
 
 #### 6.5.1 历史记录内容
 
@@ -1083,7 +1426,7 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
 - 在审核中心的"已审核" Tab 查看当前用户的历史审核
 - 支持导出审核报告（PDF / CSV）
 
-### 6.6 审核权限
+### 7.6 审核权限
 
 | 角色 | 权限 |
 |------|------|
@@ -1094,9 +1437,9 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
 
 ---
 
-## 7. 数据模型概要
+## 8. 数据模型概要
 
-### 7.1 核心实体关系图
+### 8.1 核心实体关系图
 
 ```
 ┌─────────────────┐       ┌──────────────────┐       ┌─────────────────┐
@@ -1122,7 +1465,7 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
                                                       └─────────────────┘
 ```
 
-### 7.2 核心实体定义
+### 8.2 核心实体定义
 
 #### 7.2.1 WorkflowTemplate（工作流模板）
 
@@ -1259,7 +1602,7 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
 | email | VARCHAR(255) | ✅ | 邮箱 |
 | role | ENUM | ✅ | admin / editor / viewer |
 
-### 7.3 索引设计
+### 8.3 索引设计
 
 | 表 | 索引字段 | 索引类型 | 说明 |
 |-----|---------|---------|------|
@@ -1280,9 +1623,9 @@ Step 1 ────[validation: 四部分完整]────→ Step 2
 
 ---
 
-## 8. API 端点清单
+## 9. API 端点清单
 
-### 8.1 工作流模板（Workflow Templates）
+### 9.1 工作流模板（Workflow Templates）
 
 | Method | Path | 描述 | 权限 | 请求体 | 响应体 |
 |--------|------|------|------|--------|--------|
@@ -1326,7 +1669,7 @@ interface Template {
 }
 ```
 
-### 8.2 工作流实例（Workflow Instances）
+### 9.2 工作流实例（Workflow Instances）
 
 | Method | Path | 描述 | 权限 | 请求体 | 响应体 |
 |--------|------|------|------|--------|--------|
@@ -1370,7 +1713,7 @@ interface Workflow {
 }
 ```
 
-### 8.3 步骤执行（Step Executions）
+### 9.3 步骤执行（Step Executions）
 
 | Method | Path | 描述 | 权限 | 请求体 | 响应体 |
 |--------|------|------|------|--------|--------|
@@ -1408,7 +1751,7 @@ interface StepExecution {
 }
 ```
 
-### 8.4 人工审核（Human Reviews）
+### 9.4 人工审核（Human Reviews）
 
 | Method | Path | 描述 | 权限 | 请求体 | 响应体 |
 |--------|------|------|------|--------|--------|
@@ -1445,7 +1788,7 @@ interface Review {
 }
 ```
 
-### 8.5 Agent 管理
+### 9.5 Agent 管理
 
 | Method | Path | 描述 | 权限 | 请求体 | 响应体 |
 |--------|------|------|------|--------|--------|
@@ -1458,7 +1801,7 @@ interface Review {
 | POST | `/api/v1/agents/batch-sync` | 批量同步 | editor | — | `{ success: true }` |
 | POST | `/api/v1/agents/batch-cleanup` | 批量清理 | editor | — | `{ success: true }` |
 
-### 8.6 统计与监控
+### 9.6 统计与监控
 
 | Method | Path | 描述 | 权限 | 请求体 | 响应体 |
 |--------|------|------|------|--------|--------|
@@ -1492,7 +1835,7 @@ interface WorkflowStats {
 }
 ```
 
-### 8.7 WebSocket 事件
+### 9.7 WebSocket 事件
 
 **连接端点**：
 ```
@@ -1528,9 +1871,9 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 
 ---
 
-## 9. 优先级排序
+## 10. 优先级排序
 
-### 9.1 P0 — MVP 必做（v1.0）
+### 10.1 P0 — MVP 必做（v1.0）
 
 **目标**：实现核心工作流编排和执行能力，支持基本的流程可视化
 
@@ -1551,10 +1894,33 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 | P0-13 | 可视化 | 进度条与时间估算 | ⭐⭐⭐⭐⭐ | 3 | P0-09 |
 | P0-14 | 控制能力 | 暂停/恢复/终止工作流 | ⭐⭐⭐⭐⭐ | 5 | P0-07 |
 | P0-15 | 控制能力 | 重试/跳过单步 | ⭐⭐⭐⭐ | 3 | P0-09 |
-| P0-16 | 数据模型 | 核心表设计与迁移 | ⭐⭐⭐⭐⭐ | 5 | 无 |
+| P0-16 | 数据模型 | 核心表设计与迁移（含 Tasks/Sessions 扩展） | ⭐⭐⭐⭐⭐ | 5 | 无 |
 | P0-17 | API | 核心接口开发 | ⭐⭐⭐⭐⭐ | 8 | P0-16 |
 | P0-18 | WebSocket | 实时状态推送 | ⭐⭐⭐⭐⭐ | 5 | P0-17 |
-| **合计** | | | | **87 人天** | |
+| P0-19 | 控制能力 | 强制完成单步 | ⭐⭐⭐⭐ | 2 | P0-15 |
+| P0-20 | 控制能力 | 重新分配 Agent | ⭐⭐⭐⭐ | 3 | P0-08 |
+| P0-21 | 进度感知 | 超时预警 | ⭐⭐⭐⭐ | 2 | P0-13 |
+| **合计** | | | | **94 人天** | |
+
+**P0-16 详细说明**：
+- **新增表**：
+  - `workflow_templates`：工作流模板
+  - `workflow_instances`：工作流实例
+  - `step_executions`：步骤执行记录
+  - `review_records`：审核记录
+  - `log_entries`：日志条目
+  - `agents`：Agent 信息
+  
+- **扩展现有表**：
+  - `tasks` 表新增字段：
+    - `workflow_instance_id` (UUID)：关联的工作流实例 ID
+    - `step_execution_id` (UUID)：关联的步骤执行 ID
+    - `step_order` (INTEGER)：步骤顺序号
+  
+  - `sessions` 表新增字段：
+    - `workflow_instance_id` (UUID)：关联的工作流实例 ID
+    - `step_execution_id` (UUID)：关联的步骤执行 ID
+    - `step_order` (INTEGER)：步骤顺序号
 
 **MVP 功能范围**：
 - ✅ 创建/编辑/发布工作流模板
@@ -1571,11 +1937,10 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 - ❌ Request Changes 机制
 - ❌ 时间线视图
 - ❌ 实时日志流
-- ❌ 强制完成/重新分配 Agent
 - ❌ 历史版本回滚
 - ❌ 模板导入/导出
 
-### 9.2 P1 — v1.1 重要功能
+### 10.2 P1 — v1.1 重要功能
 
 **目标**：增强审核能力、历史追溯、日志系统
 
@@ -1589,15 +1954,13 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 | P1-06 | 历史记录 | 时间线视图 | ⭐⭐⭐⭐ | 3 | P1-05 |
 | P1-07 | 历史记录 | 实时日志流 | ⭐⭐⭐⭐⭐ | 5 | P0-18 |
 | P1-08 | 历史记录 | 导出报告（PDF/JSON） | ⭐⭐⭐ | 3 | P1-05 |
-| P1-09 | 控制能力 | 强制完成单步 | ⭐⭐⭐⭐ | 2 | P0-15 |
-| P1-10 | 控制能力 | 重新分配 Agent | ⭐⭐⭐⭐ | 3 | P0-08 |
-| P1-11 | 模板管理 | 模板复制 | ⭐⭐⭐ | 2 | P0-01 |
-| P1-12 | 模板管理 | 模板导入/导出 | ⭐⭐⭐ | 3 | P0-01 |
-| P1-13 | 模板管理 | 历史版本回滚 | ⭐⭐⭐ | 3 | P0-04 |
-| P1-14 | 思考链路 | Agent 推理过程展示 | ⭐⭐⭐⭐ | 5 | P1-07 |
-| **合计** | | | | **49 人天** | |
+| P1-09 | 模板管理 | 模板复制 | ⭐⭐⭐ | 2 | P0-01 |
+| P1-10 | 模板管理 | 模板导入/导出 | ⭐⭐⭐ | 3 | P0-01 |
+| P1-11 | 模板管理 | 历史版本回滚 | ⭐⭐⭐ | 3 | P0-04 |
+| P1-12 | 思考链路 | Agent 推理过程展示 | ⭐⭐⭐⭐ | 5 | P1-07 |
+| **合计** | | | | **44 人天** | |
 
-### 9.3 P2 — v1.2 增强功能
+### 10.3 P2 — v1.2 增强功能
 
 **目标**：高级控制能力、统计分析、移动端适配
 
@@ -1616,19 +1979,19 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 | P2-11 | 集成 | 嵌套工作流（子工作流） | ⭐⭐⭐ | 8 | P0-07 |
 | **合计** | | | | **56 人天** | |
 
-### 9.4 发布计划
+### 10.4 发布计划
 
 | 版本 | 功能范围 | 预计工期 | 发布日期 |
 |------|---------|---------|---------|
-| **v1.0 MVP** | P0（18 个功能点） | 87 人天 ≈ 2.5 个月（3 人团队） | 2026-06-15 |
-| **v1.1** | P0 + P1（32 个功能点） | 136 人天 ≈ 4 个月 | 2026-08-01 |
-| **v1.2** | P0 + P1 + P2（43 个功能点） | 192 人天 ≈ 5.5 个月 | 2026-09-15 |
+| **v1.0 MVP** | P0（21 个功能点） | 94 人天 ≈ 2.5 个月（3 人团队） | 2026-06-15 |
+| **v1.1** | P0 + P1（33 个功能点） | 138 人天 ≈ 4 个月 | 2026-08-01 |
+| **v1.2** | P0 + P1 + P2（44 个功能点） | 194 人天 ≈ 5.5 个月 | 2026-09-15 |
 
 ---
 
-## 10. 与现有页面的集成点
+## 11. 与现有页面的集成点
 
-### 10.1 与 Kanban 的集成
+### 11.1 与 Kanban 的集成
 
 #### 10.1.1 工作流任务卡片
 
@@ -1677,7 +2040,7 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 [ ] 仅显示待审核的工作流
 ```
 
-### 10.2 与 Tasks 的集成
+### 11.2 与 Tasks 的集成
 
 #### 10.2.1 任务与步骤关联
 
@@ -1711,7 +2074,7 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 2. 步骤指定能力标签 → 匹配满足标签的 Agent
 3. 无匹配 → 步骤进入等待队列
 
-### 10.3 与 Sessions 的集成
+### 11.3 与 Sessions 的集成
 
 #### 10.3.1 会话与步骤关联
 
@@ -1750,7 +2113,7 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 - 后续步骤通过引用访问前序步骤的产出
 - 会话详情页显示产出在工作流中的引用关系
 
-### 10.4 与 Dashboard 的集成
+### 11.4 与 Dashboard 的集成
 
 #### 10.4.1 新增统计卡片
 
@@ -1777,7 +2140,7 @@ wss://[host]/api/v1/ws?token=[jwt_token]
 ● 10:15 [工作流] 研发流水线-需求新增 进入 Step 3（PRD + 需求评审）
 ```
 
-### 10.5 与 Agents 页面的集成
+### 11.5 与 Agents 页面的集成
 
 #### 10.5.1 Agent 详情页增强
 
@@ -1803,7 +2166,7 @@ Agent: rd-backend-dev
 当前任务：2（独立任务: 1, 工作流步骤: 1）
 ```
 
-### 10.6 数据流图
+### 11.6 数据流图
 
 ```
 ┌──────────────┐
@@ -1914,6 +2277,28 @@ Agent: rd-backend-dev
 | 版本 | 日期 | 作者 | 变更说明 |
 |------|------|------|----------|
 | v1.0 | 2026-04-01 | rd-product-manager | 初始版本，包含完整 PRD |
+| v2 | 2026-04-01 | rd-product-manager | 根据互审意见修复 3 个冻结前问题：补充 20 步流水线模板示例（含 Step 5 设计互审与 Step 12 双走查）、将强制完成单步/重新分配 Agent/超时预警提升至 P0、明确 Tasks/Sessions 表字段扩展。 |
+
+### v2 修订记录
+
+1. **补充 20 步流水线模板示例**
+   - 新增第 6 节《工作流模板示例》
+   - 增加完整研发流水线 YAML 示例
+   - 明确 Step 5 设计互审要求：`ui-designer ↔ ui-checker`、`rd-dba ↔ dba-checker`
+   - 明确 Step 12 双走查要求：双产品走查（`rd-product-manager + rd-pm-checker`）与双 UI 走查（`ui-designer + ui-checker`）
+   - 补充互审/走查验证规则与模板使用规范
+
+2. **调整关键控制功能优先级**
+   - 将“强制完成单步”从 P1 提升至 P0-19
+   - 将“重新分配 Agent”从 P1 提升至 P0-20
+   - 新增 P0-21“超时预警”
+   - 更新 P0/P1 工作量与发布计划统计
+
+3. **明确 Tasks/Sessions 字段扩展**
+   - 在 P0-16 中明确纳入现有表扩展
+   - `tasks` 表新增：`workflow_instance_id`、`step_execution_id`、`step_order`
+   - `sessions` 表新增：`workflow_instance_id`、`step_execution_id`、`step_order`
+   - 补充 P0-16 详细说明，明确新增表与扩展表范围
 
 ---
 

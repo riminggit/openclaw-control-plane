@@ -617,7 +617,7 @@
   },
   "agent_skill.eyebrow": "Agent & Skill",
   "agent_skill.title": "Agent-Skill Management",
-  "agent_skill.subtitle": "管理 Agent 能力和技能分配",
+  "agent_skill.subtitle": "Manage agent capabilities and skill assignments",
   "agent_skill.matrix_view": "矩阵视图",
   "agent_skill.agent_dim": "Agent 维度",
   "agent_skill.skill_dim": "Skill 维度",
