@@ -17,9 +17,12 @@ const getAgentTemplates = (t: (key: string, fallback: string) => string) => [
   { name: t('agent_template.data_analyst', '数据分析'), model: 'zhipu/GLM-5-Turbo', thinking: true, prompt: '你是一个数据分析师，擅长统计分析、可视化解读和数据建模。' },
 ]
 
-const MODELS = [
-  'zhipu/GLM-5-Turbo', 'zhipu/GLM-5', 'openai/gpt-4o', 'openai/gpt-4o-mini',
-  'anthropic/claude-sonnet-4-20250514', 'anthropic/claude-haiku-4-20250414',
+// Models will be loaded from backend API; fallback list for offline
+const DEFAULT_MODELS = [
+  'zhipu/GLM-5-Turbo', 'zhipu/glm-5',
+  'Anthropic/claude-sonnet-4-6', 'Anthropic/gpt-5.4',
+  'OpenAI/qwen3-max-2026-01-23', 'OpenAI/qwen3.5-plus',
+  'moonshot/kimi-k2.5', 'deepseek/deepseek-chat',
 ]
 
 const CHANNEL_ICONS: Record<string, string> = {
@@ -42,7 +45,8 @@ export function AgentsPage() {
   // Form state
   const [formName, setFormName] = useState('')
   const [formDesc, setFormDesc] = useState('')
-  const [formModel, setFormModel] = useState(MODELS[0])
+  const [models, setModels] = useState<string[]>(DEFAULT_MODELS)
+  const [formModel, setFormModel] = useState(DEFAULT_MODELS[0])
   const [formThinking, setFormThinking] = useState(false)
   const [formPrompt, setFormPrompt] = useState('')
   const [saving, setSaving] = useState(false)
@@ -59,10 +63,22 @@ export function AgentsPage() {
     }
   }, [])
 
-  useEffect(() => { fetchAgents() }, [fetchAgents])
+  const fetchModels = useCallback(async () => {
+    try {
+      const res = await fetch('/api/gateway/models')
+      if (!res.ok) return
+      const data = await res.json()
+      const modelList = (data.models || []).map((m: { id: string; provider: string }) =>
+        `${m.provider}/${m.id}`
+      )
+      if (modelList.length > 0) setModels(modelList)
+    } catch { /* use defaults */ }
+  }, [])
+
+  useEffect(() => { fetchAgents(); fetchModels() }, [fetchAgents, fetchModels])
 
   const resetForm = () => {
-    setFormName(''); setFormDesc(''); setFormModel(MODELS[0]); setFormThinking(false); setFormPrompt('')
+    setFormName(''); setFormDesc(''); setFormModel(models[0] || DEFAULT_MODELS[0]); setFormThinking(false); setFormPrompt('')
     setEditingAgent(null)
   }
 
@@ -259,8 +275,8 @@ export function AgentsPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 'var(--space-4)', alignItems: 'end' }}>
                 <div>
                   <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--space-2)' }}>{t('agents_mgmt.field_model')}</label>
-                  <Select value={formModel} onChange={e => setFormModel(e)}>
-                    {MODELS.map(m => <Select.Option key={m} value={m}>{m}</Select.Option>)}
+                  <Select value={formModel} onChange={val => setFormModel(val)}>
+                    {models.map(m => <Select.Option key={m} value={m}>{m}</Select.Option>)}
                   </Select>
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>

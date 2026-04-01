@@ -17,6 +17,7 @@ export interface Agent {
 interface RawAgent {
   id: string
   name: string
+  model?: string
   config?: {
     model?: string | { primary?: string; fallbacks?: string[] }
     workspace?: string
@@ -24,15 +25,21 @@ interface RawAgent {
     subagents?: { allowAgents: string[] }
     [key: string]: unknown
   }
+  [key: string]: unknown
 }
 
 function normalizeAgent(raw: RawAgent): Agent {
-  const model = raw.config?.model
+  // model can be at top-level or nested in config.model
+  const flatModel = raw.model
+  const cfgModel = raw.config?.model
+  const model = typeof flatModel === 'string' ? flatModel
+    : typeof cfgModel === 'string' ? cfgModel
+    : cfgModel?.primary || 'unknown'
   return {
     id: raw.id,
     name: raw.name,
     description: raw.name,
-    model: typeof model === 'string' ? model : model?.primary || 'unknown',
+    model,
     status: 'online' as const,
     channels: [],
     workspace: raw.config?.workspace,

@@ -142,7 +142,11 @@ def update_agent(agent_id: str, payload: dict[str, Any]):
     if idx < 0:
         raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
     for k, v in payload.items():
-        if k != "id":
+        if k == "id":
+            continue
+        if k == "description":
+            agent_list[idx]["name"] = v  # OpenClaw uses name as display
+        else:
             agent_list[idx][k] = v
     cfg["agents"]["list"] = agent_list
     _save_config(cfg)
