@@ -8,8 +8,20 @@ from app.models.task import Task, TaskDependency
 from app.models.review import Review
 from app.models.artifact import Artifact
 from app.models.dispatch import Dispatch, ExecutionLog
-from app.models.event import ActivityEvent
-from app.models.adapter import Adapter
+# from app.models.event import ActivityEvent  # Module doesn't exist
+# from app.models.adapter import Adapter  # Module doesn't exist
+from app.models.workflow import (
+    WorkflowTemplate,
+    WorkflowInstance,
+    StepDefinition,
+    StepExecution,
+    ReviewRecord,
+    WorkflowLog,
+    WorkflowTemplateVersion,
+    WorkflowSchedulerQueue,
+    WorkflowArtifact,
+    WorkflowEvent,
+)
 
 __all__ = [
     "Base",
@@ -20,6 +32,17 @@ __all__ = [
     "Review",
     "Artifact",
     "Dispatch", "ExecutionLog",
-    "ActivityEvent",
-    "Adapter",
+    # "ActivityEvent",  # Module doesn't exist
+    # "Adapter",  # Module doesn't exist
+    # Workflow models
+    "WorkflowTemplate",
+    "WorkflowInstance",
+    "StepDefinition",
+    "StepExecution",
+    "ReviewRecord",
+    "WorkflowLog",
+    "WorkflowTemplateVersion",
+    "WorkflowSchedulerQueue",
+    "WorkflowArtifact",
+    "WorkflowEvent",
 ]

@@ -688,5 +688,6 @@
   "nav.security": "Security",
   "nav.extensions": "Extensions",
   "nav.communication": "Communication",
-  "nav.settings": "Settings"
+  "nav.settings": "Settings",
+  "logs.word_wrap": "Word Wrap"
 }

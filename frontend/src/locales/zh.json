@@ -688,5 +688,6 @@
   "nav.security": "安全",
   "nav.extensions": "扩展",
   "nav.communication": "通信",
-  "nav.settings": "设置"
+  "nav.settings": "设置",
+  "logs.word_wrap": "自动换行"
 }

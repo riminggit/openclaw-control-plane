@@ -1,24 +1,34 @@
 """Agent model."""
 
-import uuid
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import String, Integer, Boolean, DateTime, text
-from sqlalchemy.dialects.postgresql import UUID, ENUM
+from sqlalchemy import String, Text, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, TimestampMixin, generate_uuid
+from app.models.base import Base
 
 
-class Agent(Base, TimestampMixin):
+class Agent(Base):
+    """
+    Agent 信息表
+    
+    This model matches the database schema defined in workflow-schema.sql
+    and includes all fields needed for the workflow management system.
+    """
     __tablename__ = "agents"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=generate_uuid)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    role: Mapped[str] = mapped_column(String(50), nullable=False)
-    status: Mapped[str] = mapped_column(
-        ENUM("online", "offline", name="agent_status", create_type=False),
-        nullable=False, server_default="offline"
-    )
-    current_task_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = {'extend_existing': True}  # Allow redefinition if needed
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    display_name: Mapped[Optional[str]] = mapped_column(String)
+    capabilities: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON array
+    status: Mapped[str] = mapped_column(String, nullable=False, default="offline")  # online / degraded / offline
+    current_task_id: Mapped[Optional[str]] = mapped_column(String)
+    current_workflow_instance_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("workflow_instances.id", ondelete="SET NULL"))
+    current_step_execution_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("step_executions.id", ondelete="SET NULL"))
+    last_heartbeat: Mapped[Optional[str]] = mapped_column(String)
+    config: Mapped[Optional[str]] = mapped_column(Text)  # JSON
+    metadata_json: Mapped[Optional[str]] = mapped_column("metadata", Text)  # Map to 'metadata' column in DB
+    created_at: Mapped[str] = mapped_column(String, nullable=False, default=lambda: datetime.utcnow().isoformat())
+    updated_at: Mapped[str] = mapped_column(String, nullable=False, default=lambda: datetime.utcnow().isoformat())
