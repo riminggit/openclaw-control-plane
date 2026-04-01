@@ -709,5 +709,12 @@
   "usage.no_models": "No data",
   "usage.range_today": "Today",
   "usage.range_7d": "7 Days",
-  "usage.range_30d": "30 Days"
+  "usage.range_30d": "30 Days",
+  "comm.tip_messages": "💬 Messages: View and manage real-time messages from connected channels (Telegram, Feishu, etc.)",
+  "comm.tip_broadcast": "📢 Broadcast: Send notification messages to all connected channels or specific groups",
+  "comm.tip_commands": "⚡ Commands: Execute pre-registered automation commands (restart, sync, status check, etc.)",
+  "comm.tip_hooks": "🔗 Webhooks: Configure HTTP callback URLs to push data to external services on events",
+  "comm.tip_approvals": "✅ Approvals: Review and approve/reject operation requests requiring human confirmation",
+  "comm.webhook_url_tip": "HTTP URL of the external service to receive callbacks",
+  "comm.webhook_events_tip": "Event types that trigger callbacks, comma-separated (e.g. message,session,error)"
 }

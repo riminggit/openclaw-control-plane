@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Select, Card } from 'antd'
+import { Button, Input, Select, Card, Tabs, Tooltip, Empty, Tag } from 'antd'
+import { QuestionCircleOutlined, SendOutlined, MegaphoneOutlined, CodeOutlined, LinkOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 
 
 const API = '/api/communication'
@@ -139,12 +140,18 @@ export function CommunicationPage() {
     } catch {}
   }
 
+  const InfoIcon = ({ text }: { text: string }) => (
+    <Tooltip title={text}>
+      <QuestionCircleOutlined style={{ color: 'var(--text-muted)', fontSize: 14, marginLeft: 4, cursor: 'help' }} />
+    </Tooltip>
+  )
+
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'messages', label: t('comm.tab_messages') },
-    { key: 'broadcast', label: t('comm.tab_broadcast') },
-    { key: 'commands', label: t('comm.tab_commands') },
-    { key: 'hooks', label: t('comm.tab_hooks') },
-    { key: 'approvals', label: t('comm.tab_approvals') },
+    { key: 'messages', label: <>{t('comm.tab_messages')} <InfoIcon text={t('comm.tip_messages')} /></> },
+    { key: 'broadcast', label: <>{t('comm.tab_broadcast')} <InfoIcon text={t('comm.tip_broadcast')} /></> },
+    { key: 'commands', label: <>{t('comm.tab_commands')} <InfoIcon text={t('comm.tip_commands')} /></> },
+    { key: 'hooks', label: <>{t('comm.tab_hooks')} <InfoIcon text={t('comm.tip_hooks')} /></> },
+    { key: 'approvals', label: <>{t('comm.tab_approvals')} <InfoIcon text={t('comm.tip_approvals')} /></> },
   ]
 
   if (loading) return <div className="skeleton" style={{ height: 200 }} />

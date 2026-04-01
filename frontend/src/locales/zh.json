@@ -709,5 +709,12 @@
   "usage.no_models": "暂无数据",
   "usage.range_today": "今日",
   "usage.range_7d": "7天",
-  "usage.range_30d": "30天"
+  "usage.range_30d": "30天",
+  "comm.tip_messages": "💬 消息管理：查看和管理通过各渠道（Telegram、飞书等）收发的实时消息记录",
+  "comm.tip_broadcast": "📢 广播发送：向所有已连接的渠道或指定群组群发消息通知",
+  "comm.tip_commands": "⚡ 命令执行：执行预注册的自动化命令（如重启、同步、查询状态等快捷操作）",
+  "comm.tip_hooks": "🔗 Webhook 钩子：配置 HTTP 回调地址，当收到指定事件时自动推送数据到外部服务",
+  "comm.tip_approvals": "✅ 审批管理：查看和处理需要人工确认的操作请求（如高风险命令、数据删除等）",
+  "comm.webhook_url_tip": "输入外部服务接收回调的 HTTP 地址",
+  "comm.webhook_events_tip": "触发回调的事件类型，用逗号分隔（如 message,session,error）"
 }
