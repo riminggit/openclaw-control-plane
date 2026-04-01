@@ -55,7 +55,8 @@
     "usage": "用量统计",
     "security": "安全设置",
     "extensions": "扩展管理",
-    "communication": "通信中心"
+    "communication": "通信中心",
+    "workflows": "工作流管理"
   },
   "security": {
     "eyebrow": "安全设置",

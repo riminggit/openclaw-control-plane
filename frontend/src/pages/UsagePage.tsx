@@ -104,7 +104,7 @@ export function UsagePage() {
       dataIndex: 'tokens',
       key: 'tokens',
       sorter: (a: TopSession, b: TopSession) => b.tokens - a.tokens,
-      defaultSortOrder: 'descend',
+      defaultSortOrder: 'descend' as const,
       render: (v: number) => <span style={{ fontWeight: 600 }}>{fmtTokens(v)}</span>,
     },
     {

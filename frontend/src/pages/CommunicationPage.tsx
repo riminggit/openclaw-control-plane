@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Select, Card, Tabs, Tooltip, Empty, Tag } from 'antd'
-import { QuestionCircleOutlined, SendOutlined, MegaphoneOutlined, CodeOutlined, LinkOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
+import { QuestionCircleOutlined, SendOutlined, CodeOutlined, LinkOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 
 
 const API = '/api/communication'
@@ -146,7 +146,7 @@ export function CommunicationPage() {
     </Tooltip>
   )
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: Tab; label: React.ReactNode }[] = [
     { key: 'messages', label: <>{t('comm.tab_messages')} <InfoIcon text={t('comm.tip_messages')} /></> },
     { key: 'broadcast', label: <>{t('comm.tab_broadcast')} <InfoIcon text={t('comm.tip_broadcast')} /></> },
     { key: 'commands', label: <>{t('comm.tab_commands')} <InfoIcon text={t('comm.tip_commands')} /></> },

@@ -31,6 +31,12 @@ const ExtensionsPage = lazy(() => import('./pages/ExtensionsPage').then(m => ({ 
 const CommunicationPage = lazy(() => import('./pages/CommunicationPage').then(m => ({ default: m.CommunicationPage })))
 const AgentSkillPage = lazy(() => import('./pages/AgentSkillPage').then(m => ({ default: m.AgentSkillPage })))
 const ModelSettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+// Workflow pages
+const WorkflowTemplates = lazy(() => import('./pages/workflows/Templates'))
+const WorkflowTemplateDetail = lazy(() => import('./pages/workflows/TemplateDetail'))
+const WorkflowInstances = lazy(() => import('./pages/workflows/Instances'))
+const WorkflowInstanceDetail = lazy(() => import('./pages/workflows/InstanceDetail'))
+const WorkflowReviews = lazy(() => import('./pages/workflows/Reviews'))
 
 function PageLoader() {
   return (
@@ -97,6 +103,11 @@ export default function App() {
                   <Route path="extensions" element={<ExtensionsPage />} />
                   <Route path="communication" element={<CommunicationPage />} />
                   <Route path="agent-skills" element={<AgentSkillPage />} />
+                  <Route path="workflows" element={<WorkflowTemplates />} />
+                  <Route path="workflows/template/:id" element={<WorkflowTemplateDetail />} />
+                  <Route path="workflows/instances" element={<WorkflowInstances />} />
+                  <Route path="workflows/instance/:id" element={<WorkflowInstanceDetail />} />
+                  <Route path="workflows/reviews" element={<WorkflowReviews />} />
                 </Route>
               </Routes>
             </Suspense>

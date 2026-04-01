@@ -55,7 +55,8 @@
     "usage": "Usage",
     "security": "Security",
     "extensions": "Extensions",
-    "communication": "Communication"
+    "communication": "Communication",
+    "workflows": "Workflows"
   },
   "security": {
     "eyebrow": "Security",
