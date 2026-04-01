@@ -23,7 +23,7 @@ export default defineConfig({
             if (id.includes('antd') || id.includes('@ant-design') || id.includes('rc-')) {
               return 'vendor-antd'
             }
-            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler') || id.includes('react-router')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler') || id.includes('react-router') || id.includes('i18next') || id.includes('react-i18next')) {
               return 'vendor-react'
             }
             if (id.includes('@ant-design/icons')) {
