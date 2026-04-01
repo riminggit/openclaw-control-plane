@@ -105,7 +105,7 @@ export function TaskDetailPage() {
 
       {/* Action Buttons */}
       {visibleActions.length > 0 && (
-        <div className="card" style={{ marginBottom: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ marginBottom: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginRight: 'var(--space-2)' }}>{t('task_action.label')}：</span>
           {visibleActions.map(a => (
             <Button key={a.key} className={a.style} onClick={() => handleAction(a.key)}>{a.label}</Button>
