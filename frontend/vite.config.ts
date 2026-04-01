@@ -23,19 +23,12 @@ export default defineConfig({
             if (id.includes('antd') || id.includes('@ant-design') || id.includes('rc-')) {
               return 'vendor-antd'
             }
-            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler') || id.includes('react-router') || id.includes('i18next') || id.includes('react-i18next')) {
-              return 'vendor-react'
-            }
-            if (id.includes('@ant-design/icons')) {
-              return 'vendor-icons'
-            }
             if (id.includes('recharts') || id.includes('d3-')) {
               return 'vendor-charts'
             }
-            if (id.includes('dayjs') || id.includes('date-fns') || id.includes('moment')) {
-              return 'vendor-dates'
-            }
-            return 'vendor-misc'
+            // Everything else (react, react-dom, react-router, i18next, dnd-kit, zustand, clsx, etc.)
+            // goes into vendor-react to avoid useState/useEffect undefined errors from chunk load order
+            return 'vendor-react'
           }
         },
         assetFileNames: 'assets/[name]-[hash][extname]',
