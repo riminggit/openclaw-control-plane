@@ -21,7 +21,8 @@ const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   email: <MailOutlined />,
 }
 
-const CHANNEL_TYPES: { type: string; name: string; icon: React.ReactNode; fields: { key: string; label: string; placeholder: string; type?: 'password' }[] }[] = [
+// Channel types configuration - placeholders for Feishu and DingTalk are in Chinese
+const getChannelTypes = (t: (key: string, fallback: string) => string) => [
   { type: 'telegram', name: 'Telegram', icon: <SendOutlined style={{ fontSize: 28 }} />, fields: [
     { key: 'botToken', label: 'Bot Token', placeholder: '123456:ABC-DEF...' },
   ]},
@@ -34,12 +35,12 @@ const CHANNEL_TYPES: { type: string; name: string; icon: React.ReactNode; fields
     { key: 'token', label: 'Token', placeholder: 'Access Token', type: 'password' },
     { key: 'secret', label: 'Secret', placeholder: 'App Secret', type: 'password' },
   ]},
-  { type: 'feishu', name: '飞书', icon: <TranslationOutlined style={{ fontSize: 28 }} />, fields: [
-    { key: 'appId', label: 'App ID', placeholder: '飞书应用 App ID' },
-    { key: 'appSecret', label: 'App Secret', placeholder: '飞书应用 Secret', type: 'password' },
+  { type: 'feishu', name: t('channels.feishu', '飞书'), icon: <TranslationOutlined style={{ fontSize: 28 }} />, fields: [
+    { key: 'appId', label: 'App ID', placeholder: t('channels.feishu_app_id', '飞书应用 App ID') },
+    { key: 'appSecret', label: 'App Secret', placeholder: t('channels.feishu_app_secret', '飞书应用 Secret'), type: 'password' },
   ]},
-  { type: 'dingtalk', name: '钉钉', icon: <WechatOutlined style={{ fontSize: 28 }} />, fields: [
-    { key: 'clientKey', label: 'Client Key', placeholder: '钉钉应用 ClientKey' },
+  { type: 'dingtalk', name: t('channels.dingtalk', '钉钉'), icon: <WechatOutlined style={{ fontSize: 28 }} />, fields: [
+    { key: 'clientKey', label: 'Client Key', placeholder: t('channels.dingtalk_client_key', '钉钉应用 ClientKey') },
     { key: 'clientSecret', label: 'Client Secret', placeholder: 'Client Secret', type: 'password' },
   ]},
   { type: 'signal', name: 'Signal', icon: <SafetyCertificateOutlined style={{ fontSize: 28 }} />, fields: [
@@ -53,6 +54,7 @@ const CHANNEL_TYPES: { type: string; name: string; icon: React.ReactNode; fields
 
 export function ChannelsPage() {
   const { t } = useTranslation()
+  const CHANNEL_TYPES = getChannelTypes(t)
   const [channels, setChannels] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedType, setExpandedType] = useState<string | null>(null)
