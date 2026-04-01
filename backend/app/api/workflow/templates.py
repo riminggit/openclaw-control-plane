@@ -96,8 +96,13 @@ def _dag_to_json(dag: DAGDefinition) -> str:
     return json.dumps(dag.model_dump(), ensure_ascii=False)
 
 
-def _config_to_json(config: WorkflowConfig) -> str:
-    """将 Config 对象转换为 JSON 字符串"""
+def _config_to_json(config: Optional[WorkflowConfig]) -> str:
+    """将 Config 对象转换为 JSON 字符串
+    
+    如果 config 为 None，返回空 JSON 对象 "{}" 以满足数据库 NOT NULL 约束
+    """
+    if config is None:
+        return "{}"
     return json.dumps(config.model_dump(), ensure_ascii=False)
 
 
@@ -106,8 +111,10 @@ def _json_to_dag(json_str: str) -> DAGDefinition:
     return DAGDefinition(**json.loads(json_str))
 
 
-def _json_to_config(json_str: str) -> WorkflowConfig:
+def _json_to_config(json_str: Optional[str]) -> Optional[WorkflowConfig]:
     """将 JSON 字符串转换为 Config 对象"""
+    if json_str is None:
+        return None
     return WorkflowConfig(**json.loads(json_str))
 
 
