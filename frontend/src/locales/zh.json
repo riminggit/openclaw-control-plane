@@ -703,5 +703,11 @@
   "lifecycle.status.failed": "失败",
   "lifecycle.cleanupConfirm": "确认清理选中的 {count} 个 session？",
   "lifecycle.autoCleanup": "自动清理",
-  "lifecycle.autoCleanupDesc": "自动检测并清理僵尸/已完成的 session"
+  "lifecycle.autoCleanupDesc": "自动检测并清理僵尸/已完成的 session",
+  "usage.rank": "排名",
+  "usage.no_sessions": "暂无数据",
+  "usage.no_models": "暂无数据",
+  "usage.range_today": "今日",
+  "usage.range_7d": "7天",
+  "usage.range_30d": "30天"
 }

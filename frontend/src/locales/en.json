@@ -703,5 +703,11 @@
   "lifecycle.status.failed": "Failed",
   "lifecycle.cleanupConfirm": "Confirm cleanup of {count} selected sessions?",
   "lifecycle.autoCleanup": "Auto Cleanup",
-  "lifecycle.autoCleanupDesc": "Auto-detect and cleanup zombie/completed sessions"
+  "lifecycle.autoCleanupDesc": "Auto-detect and cleanup zombie/completed sessions",
+  "usage.rank": "#",
+  "usage.no_sessions": "No data",
+  "usage.no_models": "No data",
+  "usage.range_today": "Today",
+  "usage.range_7d": "7 Days",
+  "usage.range_30d": "30 Days"
 }

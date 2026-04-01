@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Table, Card } from 'antd'
+import { Button, Card, Table, Statistic, Row, Col, Tag, Progress, Spin, Segmented, Empty, Typography } from 'antd'
+import { ThunderboltOutlined, ClockCircleOutlined, TeamOutlined, BarChartOutlined } from '@ant-design/icons'
 
 
 interface UsageSummary {
@@ -47,7 +48,7 @@ export function UsagePage() {
     try {
       const [sRes, tRes, mRes] = await Promise.all([
         fetch(`${API}/summary?days=${days}`),
-        fetch(`${API}/sessions?days=${days}`),
+        fetch(`${API}/sessions?days=${days}&limit=20`),
         fetch(`${API}/by-model?days=${days}`),
       ])
       if (sRes.ok) setSummary(await sRes.json())
@@ -65,98 +66,184 @@ export function UsagePage() {
 
   useEffect(() => { fetchData(range) }, [range])
 
-  const fmtTokens = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}K` : String(n)
+  const fmtTokens = (n: number) => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+    return String(n)
+  }
+
   const maxModelTokens = Math.max(...modelUsage.map(m => m.tokens), 1)
+
+  const statusColors: Record<string, string> = {
+    running: 'processing',
+    idle: 'default',
+    unknown: 'default',
+  }
+
+  const sessionColumns = [
+    {
+      title: t('usage.rank', '#'),
+      key: 'rank',
+      width: 50,
+      render: (_: unknown, __: unknown, i: number) => i + 1,
+    },
+    {
+      title: t('usage.agent', 'Agent'),
+      dataIndex: 'agent',
+      key: 'agent',
+      render: (v: string) => <Tag>{v}</Tag>,
+    },
+    {
+      title: t('usage.model', 'Model'),
+      dataIndex: 'model',
+      key: 'model',
+      render: (v: string) => <span style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>{v}</span>,
+    },
+    {
+      title: t('usage.tokens', 'Tokens'),
+      dataIndex: 'tokens',
+      key: 'tokens',
+      sorter: (a: TopSession, b: TopSession) => b.tokens - a.tokens,
+      defaultSortOrder: 'descend',
+      render: (v: number) => <span style={{ fontWeight: 600 }}>{fmtTokens(v)}</span>,
+    },
+    {
+      title: t('usage.status', 'Status'),
+      dataIndex: 'status',
+      key: 'status',
+      width: 90,
+      render: (v: string) => <Tag color={statusColors[v] || 'default'}>{v}</Tag>,
+    },
+    {
+      title: t('usage.last_active', 'Last Active'),
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      render: (v: string) => v ? new Date(v).toLocaleString() : '-',
+    },
+  ]
+
+  const barColors = ['#1677ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#13c2c2', '#fa8c16', '#2f54eb']
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       {/* Page Header */}
       <div className="page-header">
         <div>
-          <div className="page-eyebrow">{t('usage.eyebrow', '用量统计')}</div>
-          <h1 className="page-title">{t('usage.title', 'Usage 统计')}</h1>
-          <p className="page-subtitle">{t('usage.subtitle', '查看 Token 使用量和会话统计')}</p>
+          <div className="page-eyebrow">{t('usage.eyebrow')}</div>
+          <h1 className="page-title">{t('usage.title')}</h1>
+          <p className="page-subtitle">{t('usage.subtitle')}</p>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-1)', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 2 }}>
-          {(['today', '7d', '30d'] as const).map(r => (
-            <Button key={r} className={`btn ${range === r ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setRange(r)} style={{ fontSize: 'var(--text-sm)' }}>
-              {t(`usage.range_${r}`, r === 'today' ? '今日' : r === '7d' ? '7天' : '30天')}
-            </Button>
-          ))}
-        </div>
+        <Segmented
+          value={range}
+          onChange={v => setRange(v as Range)}
+          options={[
+            { label: t('usage.range_today', 'Today'), value: 'today' },
+            { label: t('usage.range_7d', '7 Days'), value: '7d' },
+            { label: t('usage.range_30d', '30 Days'), value: '30d' },
+          ]}
+        />
       </div>
 
-      {loading ? <div className="skeleton" style={{ height: 200 }} /> : (
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
+      ) : (
         <>
           {/* Summary Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--space-4)' }}>
-            <div className="card" style={{ padding: 'var(--space-4)' }}>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>{t('usage.total_tokens', '总 Token 数')}</div>
-              <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>{summary ? fmtTokens(summary.total_tokens) : '-'}</div>
-            </div>
-            <div className="card" style={{ padding: 'var(--space-4)' }}>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>{t('usage.avg_per_session', 'Session 均值')}</div>
-              <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>{summary ? fmtTokens(summary.avg_tokens_per_session) : '-'}</div>
-            </div>
-            <div className="card" style={{ padding: 'var(--space-4)' }}>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>{t('usage.total_sessions', '总 Session 数')}</div>
-              <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>{summary ? String(summary.total_sessions) : '-'}</div>
-            </div>
-            <div className="card" style={{ padding: 'var(--space-4)' }}>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>{t('usage.peak_session', '峰值 Session')}</div>
-              <div style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{summary?.peak_session_id || '-'}</div>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{summary ? fmtTokens(summary.peak_session_tokens) + ' tokens' : ''}</div>
-            </div>
-          </div>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
+              <Card size="small">
+                <Statistic
+                  title={t('usage.total_tokens')}
+                  value={summary ? summary.total_tokens : 0}
+                  formatter={v => fmtTokens(v as number)}
+                  prefix={<ThunderboltOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card size="small">
+                <Statistic
+                  title={t('usage.total_sessions')}
+                  value={summary ? summary.total_sessions : 0}
+                  prefix={<TeamOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card size="small">
+                <Statistic
+                  title={t('usage.avg_per_session')}
+                  value={summary ? summary.avg_tokens_per_session : 0}
+                  formatter={v => fmtTokens(v as number)}
+                  prefix={<BarChartOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card size="small">
+                <Statistic
+                  title={t('usage.peak_session')}
+                  value={summary ? summary.peak_session_tokens : 0}
+                  formatter={v => fmtTokens(v as number)}
+                  suffix={summary?.peak_session_id ? `tokens` : undefined}
+                  prefix={<ClockCircleOutlined />}
+                />
+                {summary?.peak_session_id && (
+                  <Typography.Text type="secondary" style={{ fontSize: 'var(--text-xs)' }}>
+                    {summary.peak_session_id}
+                  </Typography.Text>
+                )}
+              </Card>
+            </Col>
+          </Row>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+          <Row gutter={[16, 16]}>
             {/* Top Sessions Table */}
-            <div className="card" style={{ padding: 'var(--space-4)' }}>
-              <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>{t('usage.top_sessions', 'Top Session 排行')}</h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
-                      <th style={{ textAlign: 'left', padding: 'var(--space-2)', color: 'var(--text-muted)' }}>{t('usage.session', 'Session')}</th>
-                      <th style={{ textAlign: 'left', padding: 'var(--space-2)', color: 'var(--text-muted)' }}>{t('usage.agent', 'Agent')}</th>
-                      <th style={{ textAlign: 'left', padding: 'var(--space-2)', color: 'var(--text-muted)' }}>{t('usage.model', '模型')}</th>
-                      <th style={{ textAlign: 'right', padding: 'var(--space-2)', color: 'var(--text-muted)' }}>{t('usage.tokens', 'Tokens')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topSessions.map((s, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--border-default)' }}>
-                        <td style={{ padding: 'var(--space-2)' }}>{s.session_id}</td>
-                        <td style={{ padding: 'var(--space-2)', color: 'var(--text-secondary)' }}>{s.agent}</td>
-                        <td style={{ padding: 'var(--space-2)', color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>{s.model}</td>
-                        <td style={{ padding: 'var(--space-2)', textAlign: 'right' }}>{fmtTokens(s.tokens)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {topSessions.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('usage.no_sessions', '暂无数据')}</p>}
-            </div>
+            <Col xs={24} lg={14}>
+              <Card title={t('usage.top_sessions')} size="small">
+                {topSessions.length > 0 ? (
+                  <Table
+                    dataSource={topSessions}
+                    columns={sessionColumns}
+                    rowKey="session_id"
+                    pagination={false}
+                    size="small"
+                    scroll={{ y: 400 }}
+                  />
+                ) : (
+                  <Empty description={t('usage.no_sessions')} style={{ padding: 40 }} />
+                )}
+              </Card>
+            </Col>
 
             {/* Model Distribution */}
-            <div className="card" style={{ padding: 'var(--space-4)' }}>
-              <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>{t('usage.model_distribution', '模型用量分布')}</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {modelUsage.map((m, i) => (
-                  <div key={i}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', marginBottom: 4 }}>
-                      <span>{m.model}</span>
-                      <span style={{ color: 'var(--text-muted)' }}>{fmtTokens(m.tokens)} ({m.sessions} sessions)</span>
-                    </div>
-                    <div style={{ height: 8, background: 'var(--bg-surface-hover)', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${(m.tokens / maxModelTokens) * 100}%`, background: `hsl(${i * 60}, 70%, 60%)`, borderRadius: 4, transition: 'width var(--transition-normal)' }} />
-                    </div>
+            <Col xs={24} lg={10}>
+              <Card title={t('usage.model_distribution')} size="small">
+                {modelUsage.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                    {modelUsage.map((m, i) => (
+                      <div key={m.model}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 'var(--text-sm)' }}>{m.model}</span>
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                            {fmtTokens(m.tokens)} · {m.sessions} sessions
+                          </span>
+                        </div>
+                        <Progress
+                          percent={Math.round((m.tokens / maxModelTokens) * 100)}
+                          strokeColor={barColors[i % barColors.length]}
+                          size="small"
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              {modelUsage.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('usage.no_models', '暂无数据')}</p>}
-            </div>
-          </div>
+                ) : (
+                  <Empty description={t('usage.no_models')} style={{ padding: 40 }} />
+                )}
+              </Card>
+            </Col>
+          </Row>
         </>
       )}
     </div>
