@@ -102,6 +102,16 @@ class PasswordSet(BaseModel):
     old_password: str | None = None
     new_password: str
 
+class PasswordSetFrontend(BaseModel):
+    current: str | None = None
+    new: str
+
+class WhitelistAdd(BaseModel):
+    ip: str
+
+class WhitelistRemove(BaseModel):
+    ip: str
+
 class PasswordVerify(BaseModel):
     password: str
 
@@ -122,23 +132,30 @@ def get_status():
 
 
 @router.post("/password")
-def set_password(body: PasswordSet, request: Request, db: Session = Depends(_get_db)):
+async def set_password(request: Request, db: Session = Depends(_get_db)):
+    """Set or change password. Accepts {old_password, new_password} or {current, new}."""
+    body = await request.json()
+    old_pw = body.get("old_password") or body.get("current")
+    new_pw = body.get("new_password") or body.get("new")
+    if not new_pw:
+        raise HTTPException(400, "new_password required")
+
     auth = _read_auth()
     ip = request.client.host if request.client else None
     if auth.get("password_hash"):
-        if not body.old_password:
+        if not old_pw:
             _audit(db, "set_password", ip, "failed", "old_password_required")
             raise HTTPException(400, "Current password required")
-        if not _check_password(body.old_password, auth["password_hash"]):
+        if not _check_password(old_pw, auth["password_hash"]):
             _audit(db, "set_password", ip, "failed", "wrong_old_password")
             raise HTTPException(403, "Current password is incorrect")
 
-    strength = _score_password(body.new_password)
+    strength = _score_password(new_pw)
     if strength["level"] in ("weak", "fair"):
         _audit(db, "set_password", ip, "failed", f"weak_password:{strength['level']}")
         raise HTTPException(400, f"Password too {strength['level']}. Use 8+ chars with mixed case, numbers, and symbols.")
 
-    auth["password_hash"] = _hash_password(body.new_password)
+    auth["password_hash"] = _hash_password(new_pw)
     auth["updated_at"] = datetime.now(timezone.utc).isoformat()
     _write_auth(auth)
     _audit(db, "set_password", ip, "success", "password_changed")
@@ -215,3 +232,61 @@ def security_overview():
         "passwordStrength": strength,
         "riskCount": risks,
     }
+
+
+# ── Whititelist endpoints (frontend calls these) ──
+
+@router.get("/whitelist")
+def get_whitelist():
+    """Return IP whitelist as a plain list of strings."""
+    auth = _read_auth()
+    return auth.get("ip_whitelist", [])
+
+
+@router.post("/whitelist")
+def add_whitelist(body: WhitelistAdd, request: Request, db: Session = Depends(_get_db)):
+    """Add an IP to the whitelist."""
+    ip = body.ip.strip()
+    if not ip:
+        raise HTTPException(400, "IP address required")
+    auth = _read_auth()
+    wl = auth.get("ip_whitelist", [])
+    if ip in wl:
+        raise HTTPException(409, "IP already in whitelist")
+    wl.append(ip)
+    auth["ip_whitelist"] = wl
+    _write_auth(auth)
+    client_ip = request.client.host if request.client else None
+    _audit(db, "whitelist_add", client_ip, "success", f"added {ip}")
+    return {"ok": True, "whitelist": wl}
+
+
+@router.delete("/whitelist")
+def remove_whitelist(body: WhitelistRemove, request: Request, db: Session = Depends(_get_db)):
+    """Remove an IP from the whitelist."""
+    ip = body.ip.strip()
+    auth = _read_auth()
+    wl = auth.get("ip_whitelist", [])
+    if ip not in wl:
+        raise HTTPException(404, "IP not in whitelist")
+    wl.remove(ip)
+    auth["ip_whitelist"] = wl
+    _write_auth(auth)
+    client_ip = request.client.host if request.client else None
+    _audit(db, "whitelist_remove", client_ip, "success", f"removed {ip}")
+    return {"ok": True, "whitelist": wl}
+
+
+# ── Audit logs alias for frontend ──
+
+@router.get("/audit-logs")
+def get_audit_logs_frontend(db: Session = Depends(_get_db), range: str = Query("24h")):
+    """Audit logs endpoint matching frontend's expected path with range param."""
+    # Convert range to minutes offset
+    range_minutes = {"1h": 60, "24h": 1440, "7d": 10080}.get(range, 1440)
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=range_minutes)).isoformat()
+    logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(100).all()
+    # Filter by range client-side (SQLite comparison works with ISO strings)
+    filtered = [l for l in logs if l.created_at >= cutoff]
+    return [{"id": l.id, "action": l.action, "ip_address": l.ip_address, "result": l.result, "detail": l.detail, "created_at": l.created_at} for l in filtered]
