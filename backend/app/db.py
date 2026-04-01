@@ -18,7 +18,7 @@ class Base(DeclarativeBase):
 
 # ── MVP Models (TEXT PKs, no ENUMs, matches schema.sql exactly) ──
 
-from sqlalchemy import String, Text, Integer, Date, ForeignKey, Boolean  # noqa: E402
+from sqlalchemy import String, Text, Integer, Date, ForeignKey, Boolean, Float  # noqa: E402
 from sqlalchemy.orm import Mapped, mapped_column, relationship  # noqa: E402
 
 
@@ -59,9 +59,25 @@ class Task(Base):
     due_at: Mapped[str | None] = mapped_column(String, nullable=True)
     last_dispatch_at: Mapped[str | None] = mapped_column(String, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Workflow engine fields
+    started_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    completed_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    gateway_session_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    review_gate_status: Mapped[str | None] = mapped_column(String, nullable=True)  # pending/approved/rejected
+    review_log: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Progress estimation fields
+    estimated_duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    estimated_progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    progress_source: Mapped[str] = mapped_column(String, nullable=False, default="estimated")
+    actual_duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[str] = mapped_column(String, nullable=False)
     updated_at: Mapped[str] = mapped_column(String, nullable=False)
     project: Mapped["Project"] = relationship(back_populates="tasks")
+    # State transition history
+    transitions: Mapped[list["StateTransitionLog"]] = relationship(
+        backref="task", cascade="all, delete-orphan",
+        primaryjoin="Task.id == StateTransitionLog.task_id",
+    )
 
 
 class TaskDependency(Base):
@@ -106,6 +122,29 @@ class DispatchJob(Base):
     finished_at: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(String, nullable=False)
     updated_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class StateTransitionLog(Base):
+    __tablename__ = "state_transition_logs"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    task_id: Mapped[str] = mapped_column(String, ForeignKey("tasks.id"), nullable=False)
+    from_status: Mapped[str] = mapped_column(String, nullable=False)
+    to_status: Mapped[str] = mapped_column(String, nullable=False)
+    actor: Mapped[str] = mapped_column(String, nullable=False, default="system")
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class TaskThought(Base):
+    __tablename__ = "task_thoughts"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    task_id: Mapped[str] = mapped_column(String, ForeignKey("tasks.id"), nullable=False)
+    agent_id: Mapped[str] = mapped_column(String, nullable=False)
+    step_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    thinking_content: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False, default="analysis")
+    token_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[str] = mapped_column(String, nullable=False)
 
 
 class ActivityLog(Base):
@@ -167,7 +206,7 @@ class ProjectMetricDaily(Base):
 
 # ── Phase 4: Cost Analytics ──
 
-from sqlalchemy import Float  # noqa: E402
+# Float already imported at top
 
 class AgentTokenSnapshot(Base):
     __tablename__ = "agent_token_snapshots"

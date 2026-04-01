@@ -297,45 +297,48 @@ export function KanbanPage() {
   useEffect(() => { fetchData() }, [fetchData])
   useEffect(() => { const t = setInterval(fetchData, 30000); return () => clearInterval(t) }, [fetchData])
 
-  // ── Listen for Gateway events (session progress) ──
+  // ── Listen for Gateway events (chat session progress) ──
   useEffect(() => {
     if (connState !== 'connected') return
-    const unsub = gatewayClient.on('session.output', (payload: any) => {
-      // Check if this session matches one of our running tasks
+    // Gateway broadcasts "chat" events with { runId, sessionKey, state, message }
+    // state values: "delta" (streaming), "final" (done), "aborted", "error"
+    const unsub = gatewayClient.on('chat', (payload: any) => {
+      const state = payload?.state
+      const sessionKey = payload?.sessionKey
       setRunningTasks(prev => {
-        const updated = prev.map(rt => {
-          if (rt.status !== 'running') return rt
-          // We use taskId matching via session metadata or agent correlation
-          // For now, update progress heuristically
-          return rt
-        })
+        // Match running tasks by their sessionKey stored in rt.sessionKey
+        let updated = prev
+        if (state === 'delta') {
+          updated = prev.map(rt => {
+            if (rt.status !== 'running' || rt.sessionKey !== sessionKey) return rt
+            const elapsed = Math.floor((Date.now() - rt.startedAt) / 1000)
+            const newProgress = Math.min(85, Math.floor(elapsed / 2) + 10)
+            return { ...rt, progress: newProgress, step: t('kanban.step_executing', '执行中...'), elapsed: `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}` }
+          })
+        } else if (state === 'final' || state === 'aborted' || state === 'error') {
+          updated = prev.map(rt => {
+            if (rt.status !== 'running' || rt.sessionKey !== sessionKey) return rt
+            const label = state === 'error' ? t('kanban.error', '出错') : t('kanban.completed', '已完成')
+            return { ...rt, status: state === 'error' ? 'error' : 'completed', progress: 100, step: label }
+          })
+        }
         runningRef.current = updated
         return updated
       })
+      // Clean up completed/errored tasks after a delay
+      if (state === 'final' || state === 'aborted' || state === 'error') {
+        setTimeout(() => {
+          setRunningTasks(prev => {
+            const filtered = prev.filter(rt => rt.status === 'running')
+            runningRef.current = filtered
+            return filtered
+          })
+          setExecutingIds(prev => { const n = new Set(prev); return n })
+        }, 5000)
+      }
     })
 
-    const unsub2 = gatewayClient.on('session.end', (payload: any) => {
-      setRunningTasks(prev => {
-        const updated = prev.map(rt => {
-          if (rt.status !== 'running') return rt
-          // Mark as completed
-          return { ...rt, status: 'completed' as const, progress: 100, step: t('kanban.completed', '已完成') }
-        })
-        runningRef.current = updated
-        return updated
-      })
-      // Clean up completed tasks after a delay
-      setTimeout(() => {
-        setRunningTasks(prev => {
-          const filtered = prev.filter(rt => rt.status === 'running')
-          runningRef.current = filtered
-          return filtered
-        })
-        setExecutingIds(prev => { const n = new Set(prev); return n })
-      }, 5000)
-    })
-
-    return () => { unsub(); unsub2() }
+    return () => { unsub() }
   }, [connState, t])
 
   // ── Simulate progress for running tasks (placeholder until Gateway provides real progress) ──
