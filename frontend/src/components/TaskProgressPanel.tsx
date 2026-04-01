@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Progress, Statistic, Row, Col, Spin } from 'antd'
 import { ClockCircleOutlined, FieldTimeOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { apiGet } from '../api/client'
 
 interface ProgressData {
@@ -15,8 +16,8 @@ interface ProgressData {
   actual_duration_seconds: number | null
 }
 
-function fmtDuration(sec: number | null): string {
-  if (sec == null || sec < 0) return '计算中...'
+function fmtDuration(sec: number | null, t: (key: string, fallback: string) => string): string {
+  if (sec == null || sec < 0) return t('task_progress.calculating', '计算中...')
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
   const s = Math.floor(sec % 60)
@@ -26,6 +27,7 @@ function fmtDuration(sec: number | null): string {
 }
 
 export function TaskProgressPanel({ taskId }: { taskId: string }) {
+  const { t } = useTranslation()
   const [data, setData] = useState<ProgressData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -38,7 +40,7 @@ export function TaskProgressPanel({ taskId }: { taskId: string }) {
   }, [taskId])
 
   if (loading) return <Spin style={{ display: 'block', margin: '20px auto' }} />
-  if (!data) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>无进度数据</div>
+  if (!data) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>{t('task_progress.no_data', '无进度数据')}</div>
 
   const pct = Math.min(100, Math.round(data.estimated_progress))
   const strokeColor = data.is_overtime ? '#faad14' : '#52c41a'
@@ -54,32 +56,32 @@ export function TaskProgressPanel({ taskId }: { taskId: string }) {
       <Row gutter={16}>
         <Col span={8}>
           <Statistic
-            title="预估总时长"
-            value={data.estimated_duration_seconds ? fmtDuration(data.estimated_duration_seconds) : '未设置'}
+            title={t('task_progress.estimated_duration', '预估总时长')}
+            value={data.estimated_duration_seconds ? fmtDuration(data.estimated_duration_seconds, t) : t('task_progress.not_set', '未设置')}
             prefix={<FieldTimeOutlined />}
             valueStyle={{ fontSize: 14 }}
           />
         </Col>
         <Col span={8}>
           <Statistic
-            title="已用时间"
-            value={fmtDuration(data.elapsed_seconds)}
+            title={t('task_progress.elapsed_time', '已用时间')}
+            value={fmtDuration(data.elapsed_seconds, t)}
             prefix={<ClockCircleOutlined />}
             valueStyle={{ fontSize: 14 }}
           />
         </Col>
         <Col span={8}>
           <Statistic
-            title="剩余时间"
-            value={fmtDuration(data.remaining_seconds)}
+            title={t('task_progress.remaining_time', '剩余时间')}
+            value={fmtDuration(data.remaining_seconds, t)}
             prefix={<ClockCircleOutlined />}
             valueStyle={{ fontSize: 14, color: data.is_overtime ? '#faad14' : undefined }}
           />
         </Col>
       </Row>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-        进度来源: {data.progress_source} | 状态: {data.status}
-        {data.actual_duration_seconds != null && ` | 实际用时: ${fmtDuration(data.actual_duration_seconds)}`}
+        {t('task_progress.progress_source', '进度来源')}: {data.progress_source} | {t('task_progress.status', '状态')}: {data.status}
+        {data.actual_duration_seconds != null && ` | ${t('task_progress.actual_duration', '实际用时')}: ${fmtDuration(data.actual_duration_seconds, t)}`}
       </div>
     </div>
   )

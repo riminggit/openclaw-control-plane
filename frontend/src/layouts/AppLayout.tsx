@@ -131,7 +131,7 @@ export function AppLayout() {
           <Dropdown
             menu={{
               items: [
-                { key: 'zh', label: '中文', onClick: () => switchLang('zh') },
+                { key: 'zh', label: t('language.zh', '中文'), onClick: () => switchLang('zh') },
                 { key: 'en', label: 'English', onClick: () => switchLang('en') },
               ],
               selectedKeys: [i18n.language?.startsWith('zh') ? 'zh' : 'en'],
@@ -142,7 +142,7 @@ export function AppLayout() {
           >
             <button className="sidebar-footer-btn" type="button">
               <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>🌐</span>
-              {!collapsed && <span>{i18n.language?.startsWith('zh') ? '中文' : 'English'}</span>}
+              {!collapsed && <span>{i18n.language?.startsWith('zh') ? t('language.zh', '中文') : t('language.en', 'English')}</span>}
             </button>
           </Dropdown>
         </div>

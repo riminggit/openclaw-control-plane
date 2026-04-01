@@ -51,18 +51,18 @@ export function AnalyticsPage() {
     try {
       const result = await apiPost<{ ok: boolean; synced_sessions?: number; historical_records?: number; error?: string }>('/analytics/cost/sync', {})
       if (result.ok) {
-        message.success(`同步成功: ${result.synced_sessions || 0} 个会话, ${result.historical_records || 0} 条历史记录`)
+        message.success(t('analytics.sync_success', '同步成功: {{synced_sessions}} 个会话, {{historical_records}} 条历史记录', { synced_sessions: result.synced_sessions || 0, historical_records: result.historical_records || 0 }))
         // 刷新数据
         fetchRealtimeData()
         apiGet<CostSummary>('/analytics/cost/summary').then(setSummary).catch(() => {})
         apiGet<TrendPoint[]>('/analytics/cost/trend?period_days=30').then(setTrend).catch(() => {})
         apiGet<AgentCost[]>('/analytics/cost/by-agent?period_days=7').then(setAgents).catch(() => {})
       } else {
-        message.error(`同步失败: ${result.error || '未知错误'}`)
+        message.error(t('analytics.sync_failed', '同步失败: {{error}}', { error: result.error || t('analytics.unknown_error', '未知错误') }))
       }
     } catch (e: unknown) {
-      const errorMessage = e instanceof Error ? e.message : '未知错误'
-      message.error(`同步失败: ${errorMessage}`)
+      const errorMessage = e instanceof Error ? e.message : t('analytics.unknown_error', '未知错误')
+      message.error(t('analytics.sync_failed', '同步失败: {{error}}', { error: errorMessage }))
     } finally {
       setSyncing(false)
     }
@@ -125,10 +125,10 @@ export function AnalyticsPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<ReloadOutlined />} onClick={fetchRealtimeData} loading={loadingRealtime}>
-            刷新实时数据
+            {t('analytics.refresh_realtime', '刷新实时数据')}
           </Button>
           <Button type="primary" icon={<SyncOutlined />} onClick={handleSync} loading={syncing}>
-            同步数据
+            {t('analytics.sync_data', '同步数据')}
           </Button>
         </div>
       </div>
@@ -136,7 +136,7 @@ export function AnalyticsPage() {
       {/* Realtime Data Card */}
       <Card
         style={{ borderTop: '3px solid var(--accent)' }}
-        title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ThunderboltOutlined />实时数据</span>}
+        title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ThunderboltOutlined />{t('analytics.realtime_data', '实时数据')}</span>}
       >
         {loadingRealtime ? (
           <Spin />
@@ -144,14 +144,14 @@ export function AnalyticsPage() {
           <Row gutter={[16, 16]}>
             <Col xs={12} sm={6}>
               <Statistic
-                title="总 Tokens"
+                title={t('analytics.total_tokens', '总 Tokens')}
                 value={realtimeData.total_tokens}
                 valueStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
               />
             </Col>
             <Col xs={12} sm={6}>
               <Statistic
-                title="总成本 (USD)"
+                title={t('analytics.total_cost', '总成本 (USD)')}
                 value={realtimeData.total_cost_usd}
                 precision={4}
                 prefix={<DollarOutlined />}
@@ -160,14 +160,14 @@ export function AnalyticsPage() {
             </Col>
             <Col xs={12} sm={6}>
               <Statistic
-                title="活跃会话"
+                title={t('analytics.active_sessions', '活跃会话')}
                 value={realtimeData.active_sessions}
                 valueStyle={{ color: 'var(--status-blue)', fontWeight: 700 }}
               />
             </Col>
             <Col xs={12} sm={6}>
               <Statistic
-                title="活跃成本 (USD)"
+                title={t('analytics.active_cost', '活跃成本 (USD)')}
                 value={realtimeData.active_cost_usd}
                 precision={4}
                 prefix={<DollarOutlined />}
@@ -176,7 +176,7 @@ export function AnalyticsPage() {
             </Col>
           </Row>
         ) : (
-          <Empty description="无法获取实时数据" />
+          <Empty description={t('analytics.no_realtime_data', '无法获取实时数据')} />
         )}
       </Card>
 
@@ -240,7 +240,7 @@ export function AnalyticsPage() {
 
       {/* Agent Ranking (Realtime) */}
       <Card
-        title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><AlertOutlined />Agent 成本排行 (实时)</span>}
+        title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><AlertOutlined />{t('analytics.agent_cost_ranking', 'Agent 成本排行 (实时)')}</span>}
       >
         {realtimeData && Object.keys(realtimeData.by_agent).length > 0 ? (
           <ResponsiveContainer width="100%" height={Math.max(200, Object.keys(realtimeData.by_agent).length * 36)}>

@@ -9,11 +9,12 @@ const { Text, Paragraph } = Typography
 
 type ViewMode = 'card' | 'table'
 
-const AGENT_TEMPLATES: { name: string; model: string; thinking: boolean; prompt: string }[] = [
-  { name: '通用助手', model: 'zhipu/GLM-5-Turbo', thinking: false, prompt: '你是一个有帮助的 AI 助手。' },
-  { name: '代码专家', model: 'zhipu/GLM-5-Turbo', thinking: true, prompt: '你是一个资深全栈开发专家，擅长代码审查、架构设计和问题排查。' },
-  { name: '文档写作', model: 'zhipu/GLM-5-Turbo', thinking: false, prompt: '你是一个专业文档写手，擅长技术文档、用户手册和 API 文档。' },
-  { name: '数据分析', model: 'zhipu/GLM-5-Turbo', thinking: true, prompt: '你是一个数据分析师，擅长统计分析、可视化解读和数据建模。' },
+// Agent templates - prompts are in Chinese as they are system prompts for AI
+const getAgentTemplates = (t: (key: string, fallback: string) => string) => [
+  { name: t('agent_template.general_assistant', '通用助手'), model: 'zhipu/GLM-5-Turbo', thinking: false, prompt: '你是一个有帮助的 AI 助手。' },
+  { name: t('agent_template.code_expert', '代码专家'), model: 'zhipu/GLM-5-Turbo', thinking: true, prompt: '你是一个资深全栈开发专家，擅长代码审查、架构设计和问题排查。' },
+  { name: t('agent_template.doc_writer', '文档写作'), model: 'zhipu/GLM-5-Turbo', thinking: false, prompt: '你是一个专业文档写手，擅长技术文档、用户手册和 API 文档。' },
+  { name: t('agent_template.data_analyst', '数据分析'), model: 'zhipu/GLM-5-Turbo', thinking: true, prompt: '你是一个数据分析师，擅长统计分析、可视化解读和数据建模。' },
 ]
 
 const MODELS = [
@@ -27,6 +28,7 @@ const CHANNEL_ICONS: Record<string, string> = {
 
 export function AgentsPage() {
   const { t } = useTranslation()
+  const AGENT_TEMPLATES = getAgentTemplates(t)
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('card')

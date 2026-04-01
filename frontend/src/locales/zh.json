@@ -89,7 +89,8 @@
     "strength_weak": "弱",
     "strength_medium": "中",
     "strength_strong": "强",
-    "strength_very_strong": "很强"
+    "strength_very_strong": "很强",
+    "subtitle": "系统安全设置与审计"
   },
   "extensions": {
     "eyebrow": "扩展管理",
@@ -209,7 +210,15 @@
     "err_every": "请输入间隔分钟数",
     "active": "Active",
     "disabled": "Disabled",
-    "running": "Running"
+    "running": "Running",
+    "cron_expr": "Cron 表达式",
+    "at_time": "At 时间",
+    "every_interval": "Every 间隔",
+    "interval_placeholder": "30 (分钟)",
+    "agent_id_placeholder": "Agent ID (可选，默认 main)",
+    "message_placeholder": "任务消息内容 (Agent Turn)",
+    "enabled": "已启用",
+    "triggered": "已触发"
   },
   "chat": {
     "title": "Agent 聊天",
@@ -360,7 +369,17 @@
     "taskDesc": "描述",
     "priority": "优先级",
     "status": "状态",
-    "projectId": "项目ID"
+    "projectId": "项目ID",
+    "approve": "审批",
+    "dispatch": "分派",
+    "stop": "停止",
+    "complete": "完成",
+    "resume": "恢复",
+    "details": "详情",
+    "approved": "已审批",
+    "dispatched": "已分派",
+    "stopped": "已停止",
+    "resumed": "已恢复"
   },
   "lifecycle": {
     "eyebrow": "Phase 4",
@@ -410,7 +429,19 @@
     "budgetLimit": "限额 (USD)",
     "threshold": "告警阈值 (%)",
     "usage": "已用",
-    "noData": "暂无数据"
+    "noData": "暂无数据",
+    "refresh_realtime": "刷新实时数据",
+    "sync_data": "同步数据",
+    "realtime_data": "实时数据",
+    "total_tokens": "总 Tokens",
+    "total_cost": "总成本 (USD)",
+    "active_sessions": "活跃会话",
+    "active_cost": "活跃成本 (USD)",
+    "no_realtime_data": "无法获取实时数据",
+    "agent_cost_ranking": "Agent 成本排行 (实时)",
+    "sync_success": "同步成功: {{synced_sessions}} 个会话, {{historical_records}} 条历史记录",
+    "sync_failed": "同步失败: {{error}}",
+    "unknown_error": "未知错误"
   },
   "theme": {
     "label": "主题",
@@ -484,7 +515,13 @@
     "test_conn": "测试连接",
     "status_connected": "已连接",
     "status_disconnected": "已断开",
-    "status_unconfigured": "未配置"
+    "status_unconfigured": "未配置",
+    "feishu": "飞书",
+    "feishu_app_id": "飞书应用 App ID",
+    "feishu_app_secret": "飞书应用 Secret",
+    "dingtalk": "钉钉",
+    "dingtalk_client_key": "钉钉应用 ClientKey",
+    "dingtalk_client_secret": "Client Secret"
   },
   "logs": {
     "eyebrow": "日志查看器",
@@ -522,7 +559,8 @@
     "confirm_restore": "确定要恢复此备份吗？当前配置将被覆盖。",
     "diff_view": "Diff 视图",
     "config_history": "变更历史",
-    "no_history": "暂无变更记录"
+    "no_history": "暂无变更记录",
+    "subtitle": "Gateway 配置与系统资源监控"
   },
   "skills": {
     "eyebrow": "插件管理",
@@ -538,7 +576,8 @@
     "install": "安装",
     "search_placeholder": "搜索 Skill...",
     "no_installed": "暂无已安装 Skill",
-    "no_results": "无搜索结果"
+    "no_results": "无搜索结果",
+    "subtitle": "管理和安装 Agent Skills"
   },
   "memory": {
     "eyebrow": "记忆浏览器",
@@ -552,7 +591,8 @@
     "new_file": "新建",
     "download": "下载",
     "confirm_delete": "确定要删除此文件吗？",
-    "new_file_prompt": "新文件名:"
+    "new_file_prompt": "新文件名:",
+    "subtitle": "浏览和管理 Agent 记忆文件"
   },
   "usage": {
     "eyebrow": "用量统计",
@@ -569,7 +609,11 @@
     "tokens": "Tokens",
     "model_distribution": "模型用量分布",
     "no_sessions": "暂无数据",
-    "no_models": "暂无数据"
+    "no_models": "暂无数据",
+    "subtitle": "查看 Token 使用量和会话统计",
+    "avg_per_session": "Session 均值",
+    "total_sessions": "总 Session 数",
+    "model": "模型"
   },
   "agent_skill.eyebrow": "Agent & Skill",
   "agent_skill.title": "Agent-Skill Management",
@@ -597,5 +641,52 @@
   "agent_skill.update_failed": "技能更新失败",
   "agent_skill.select_hint": "选择一个 Agent 查看和管理技能",
   "agent_skill.select_skill_hint": "选择一个技能查看哪些 Agent 安装了它",
-  "agent_skill.description": "描述"
+  "agent_skill.description": "描述",
+  "agent_thought": {
+    "no_records": "暂无思考记录",
+    "load_more": "加载更多",
+    "items": "条"
+  },
+  "task_progress": {
+    "calculating": "计算中...",
+    "no_data": "无进度数据",
+    "estimated_duration": "预估总时长",
+    "not_set": "未设置",
+    "elapsed_time": "已用时间",
+    "remaining_time": "剩余时间",
+    "progress_source": "进度来源",
+    "status": "状态",
+    "actual_duration": "实际用时"
+  },
+  "agent_template": {
+    "general_assistant": "通用助手",
+    "general_assistant_prompt": "你是一个有帮助的 AI 助手。",
+    "code_expert": "代码专家",
+    "code_expert_prompt": "你是一个资深全栈开发专家，擅长代码审查、架构设计和问题排查。",
+    "doc_writer": "文档写作",
+    "doc_writer_prompt": "你是一个专业文档写手，擅长技术文档、用户手册和 API 文档。",
+    "data_analyst": "数据分析",
+    "data_analyst_prompt": "你是一个数据分析师，擅长统计分析、可视化解读和数据建模。"
+  },
+  "nav.agent_skills": "Agent-Skill 管理",
+  "nav.dashboard": "仪表盘",
+  "nav.projects": "项目",
+  "nav.tasks": "任务",
+  "nav.kanban": "看板",
+  "nav.sessions": "会话",
+  "nav.cron": "定时任务",
+  "nav.chat": "聊天",
+  "nav.analytics": "成本分析",
+  "nav.lifecycle": "Agent 生命周期",
+  "nav.agents_mgmt": "Agent 管理",
+  "nav.channels": "渠道",
+  "nav.logs": "日志",
+  "nav.services": "服务",
+  "nav.skills": "技能",
+  "nav.memory": "记忆",
+  "nav.usage": "用量",
+  "nav.security": "安全",
+  "nav.extensions": "扩展",
+  "nav.communication": "通信",
+  "nav.settings": "设置"
 }

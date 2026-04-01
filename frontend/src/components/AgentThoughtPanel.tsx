@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Timeline, Tag, Empty, Button, Spin, Collapse } from 'antd'
 import { ClockCircleOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { apiGet } from '../api/client'
 
 interface ThoughtStep {
@@ -11,6 +12,7 @@ interface ThoughtStep {
 }
 
 export function AgentThoughtPanel({ taskId }: { taskId: string }) {
+  const { t } = useTranslation()
   const [thoughts, setThoughts] = useState<ThoughtStep[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -39,7 +41,7 @@ export function AgentThoughtPanel({ taskId }: { taskId: string }) {
   }
 
   if (thoughts.length === 0) {
-    return <Empty description="暂无思考记录" style={{ padding: 24 }} />
+    return <Empty description={t('agent_thought.no_records', '暂无思考记录')} style={{ padding: 24 }} />
   }
 
   return (
@@ -72,7 +74,7 @@ export function AgentThoughtPanel({ taskId }: { taskId: string }) {
       />
       {thoughts.length < total && (
         <Button type="link" onClick={() => setLimit(l => l + 10)} block>
-          加载更多 ({total - thoughts.length} 条)
+          {t('agent_thought.load_more', '加载更多')} ({total - thoughts.length} {t('agent_thought.items', '条')})
         </Button>
       )}
     </div>

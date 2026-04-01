@@ -89,7 +89,8 @@
     "strength_weak": "Weak",
     "strength_medium": "Medium",
     "strength_strong": "Strong",
-    "strength_very_strong": "Very Strong"
+    "strength_very_strong": "Very Strong",
+    "subtitle": "System security settings and audit"
   },
   "extensions": {
     "eyebrow": "Extensions",
@@ -209,7 +210,15 @@
     "err_every": "Interval (minutes) required",
     "active": "Active",
     "disabled": "Disabled",
-    "running": "Running"
+    "running": "Running",
+    "cron_expr": "Cron Expression",
+    "at_time": "At Time",
+    "every_interval": "Every Interval",
+    "interval_placeholder": "30 (minutes)",
+    "agent_id_placeholder": "Agent ID (optional, default main)",
+    "message_placeholder": "Task message content (Agent Turn)",
+    "enabled": "Enabled",
+    "triggered": "Triggered"
   },
   "chat": {
     "title": "Agent Chat",
@@ -360,7 +369,17 @@
     "taskDesc": "Description",
     "priority": "Priority",
     "status": "Status",
-    "projectId": "Project ID"
+    "projectId": "Project ID",
+    "approve": "Approve",
+    "dispatch": "Dispatch",
+    "stop": "Stop",
+    "complete": "Complete",
+    "resume": "Resume",
+    "details": "Details",
+    "approved": "Approved",
+    "dispatched": "Dispatched",
+    "stopped": "Stopped",
+    "resumed": "Resumed"
   },
   "lifecycle": {
     "eyebrow": "Phase 4",
@@ -410,7 +429,19 @@
     "budgetLimit": "Limit (USD)",
     "threshold": "Alert Threshold (%)",
     "usage": "Used",
-    "noData": "No data yet"
+    "noData": "No data yet",
+    "refresh_realtime": "Refresh Realtime Data",
+    "sync_data": "Sync Data",
+    "realtime_data": "Realtime Data",
+    "total_tokens": "Total Tokens",
+    "total_cost": "Total Cost (USD)",
+    "active_sessions": "Active Sessions",
+    "active_cost": "Active Cost (USD)",
+    "no_realtime_data": "Unable to fetch realtime data",
+    "agent_cost_ranking": "Agent Cost Ranking (Realtime)",
+    "sync_success": "Sync successful: {{synced_sessions}} sessions, {{historical_records}} historical records",
+    "sync_failed": "Sync failed: {{error}}",
+    "unknown_error": "Unknown error"
   },
   "theme": {
     "label": "Theme",
@@ -484,7 +515,13 @@
     "test_conn": "Test Connection",
     "status_connected": "Connected",
     "status_disconnected": "Disconnected",
-    "status_unconfigured": "Unconfigured"
+    "status_unconfigured": "Unconfigured",
+    "feishu": "Feishu",
+    "feishu_app_id": "Feishu App ID",
+    "feishu_app_secret": "Feishu App Secret",
+    "dingtalk": "DingTalk",
+    "dingtalk_client_key": "DingTalk ClientKey",
+    "dingtalk_client_secret": "Client Secret"
   },
   "logs": {
     "eyebrow": "Log Viewer",
@@ -522,7 +559,8 @@
     "confirm_restore": "Restore this backup? Current config will be overwritten.",
     "diff_view": "Diff View",
     "config_history": "Change History",
-    "no_history": "No changes recorded"
+    "no_history": "No changes recorded",
+    "subtitle": "Gateway configuration and system resource monitoring"
   },
   "skills": {
     "eyebrow": "Skills",
@@ -538,7 +576,8 @@
     "install": "Install",
     "search_placeholder": "Search skills...",
     "no_installed": "No skills installed",
-    "no_results": "No results"
+    "no_results": "No results",
+    "subtitle": "Manage and install Agent Skills"
   },
   "memory": {
     "eyebrow": "Memory",
@@ -552,7 +591,8 @@
     "new_file": "New",
     "download": "Download",
     "confirm_delete": "Delete this file?",
-    "new_file_prompt": "New file name:"
+    "new_file_prompt": "New file name:",
+    "subtitle": "Browse and manage agent memory files"
   },
   "usage": {
     "eyebrow": "Usage",
@@ -569,7 +609,11 @@
     "tokens": "Tokens",
     "model_distribution": "Model Distribution",
     "no_sessions": "No data",
-    "no_models": "No data"
+    "no_models": "No data",
+    "subtitle": "View token usage and session statistics",
+    "avg_per_session": "Avg per Session",
+    "total_sessions": "Total Sessions",
+    "model": "Model"
   },
   "agent_skill.eyebrow": "Agent & Skill",
   "agent_skill.title": "Agent-Skill Management",
@@ -597,5 +641,52 @@
   "agent_skill.update_failed": "技能更新失败",
   "agent_skill.select_hint": "选择一个 Agent 查看和管理技能",
   "agent_skill.select_skill_hint": "选择一个技能查看哪些 Agent 安装了它",
-  "agent_skill.description": "描述"
+  "agent_skill.description": "描述",
+  "agent_thought": {
+    "no_records": "No thought records",
+    "load_more": "Load more",
+    "items": "items"
+  },
+  "task_progress": {
+    "calculating": "Calculating...",
+    "no_data": "No progress data",
+    "estimated_duration": "Estimated Duration",
+    "not_set": "Not set",
+    "elapsed_time": "Elapsed Time",
+    "remaining_time": "Remaining Time",
+    "progress_source": "Progress source",
+    "status": "Status",
+    "actual_duration": "Actual duration"
+  },
+  "agent_template": {
+    "general_assistant": "General Assistant",
+    "general_assistant_prompt": "You are a helpful AI assistant.",
+    "code_expert": "Code Expert",
+    "code_expert_prompt": "You are a senior full-stack developer expert in code review, architecture design, and troubleshooting.",
+    "doc_writer": "Documentation Writer",
+    "doc_writer_prompt": "You are a professional technical writer specialized in documentation, user manuals, and API docs.",
+    "data_analyst": "Data Analyst",
+    "data_analyst_prompt": "You are a data analyst expert in statistical analysis, visualization interpretation, and data modeling."
+  },
+  "nav.agent_skills": "Agent-Skill",
+  "nav.dashboard": "Dashboard",
+  "nav.projects": "Projects",
+  "nav.tasks": "Tasks",
+  "nav.kanban": "Kanban",
+  "nav.sessions": "Sessions",
+  "nav.cron": "Cron",
+  "nav.chat": "Chat",
+  "nav.analytics": "Analytics",
+  "nav.lifecycle": "Lifecycle",
+  "nav.agents_mgmt": "Agents",
+  "nav.channels": "Channels",
+  "nav.logs": "Logs",
+  "nav.services": "Services",
+  "nav.skills": "Skills",
+  "nav.memory": "Memory",
+  "nav.usage": "Usage",
+  "nav.security": "Security",
+  "nav.extensions": "Extensions",
+  "nav.communication": "Communication",
+  "nav.settings": "Settings"
 }
