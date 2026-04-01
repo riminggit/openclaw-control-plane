@@ -29,6 +29,7 @@ const UsagePage = lazy(() => import('./pages/UsagePage').then(m => ({ default: m
 const SecurityPage = lazy(() => import('./pages/SecurityPage').then(m => ({ default: m.SecurityPage })))
 const ExtensionsPage = lazy(() => import('./pages/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })))
 const CommunicationPage = lazy(() => import('./pages/CommunicationPage').then(m => ({ default: m.CommunicationPage })))
+const AgentSkillPage = lazy(() => import('./pages/AgentSkillPage').then(m => ({ default: m.AgentSkillPage })))
 
 function PageLoader() {
   return (
@@ -93,6 +94,7 @@ export default function App() {
                   <Route path="security" element={<SecurityPage />} />
                   <Route path="extensions" element={<ExtensionsPage />} />
                   <Route path="communication" element={<CommunicationPage />} />
+                  <Route path="agent-skills" element={<AgentSkillPage />} />
                 </Route>
               </Routes>
             </Suspense>

@@ -22,6 +22,7 @@ from app.api.security import router as security_router
 from app.api.extensions import router as extensions_router
 from app.api.communication import router as communication_router
 from app.api.gateway_rest import router as gateway_rest_router
+from app.api.agent_skills import router as agent_skills_router
 
 
 @asynccontextmanager
@@ -58,6 +59,7 @@ app.include_router(security_router)
 app.include_router(extensions_router)
 app.include_router(gateway_rest_router)
 app.include_router(communication_router)
+app.include_router(agent_skills_router)
 from app.api.workflow import router as workflow_router
 app.include_router(workflow_router)
 from app.api.thoughts import router as thoughts_router
