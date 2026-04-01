@@ -21,7 +21,16 @@
     "off": "关",
     "confirm_delete_project": "确定要删除该项目吗？关联的任务也将被删除。",
     "confirm_delete_task": "确定要删除该任务吗？",
-    "confirm": "确认"
+    "confirm": "确认",
+    "confirm_delete": "确定删除",
+    "select_all": "全选",
+    "selected": "已选",
+    "batch_delete": "批量删除",
+    "confirm_batch_delete": "确定删除 {{count}} 个任务？",
+    "deleted": "已删除",
+    "batch_deleted": "已删除 {{count}} 个任务",
+    "unsaved": "未保存",
+    "saved": "已保存"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -197,7 +206,10 @@
     "err_name": "请输入任务名称",
     "err_schedule": "请输入 Cron 表达式",
     "err_at": "请选择执行时间",
-    "err_every": "请输入间隔分钟数"
+    "err_every": "请输入间隔分钟数",
+    "active": "Active",
+    "disabled": "Disabled",
+    "running": "Running"
   },
   "chat": {
     "title": "Agent 聊天",
@@ -284,7 +296,17 @@
       "risk": "风险等级",
       "no_description": "暂无描述",
       "status_history": "状态变更记录",
-      "no_history": "暂无变更记录"
+      "no_history": "暂无变更记录",
+      "progress": "任务进度",
+      "thoughts": "思考链路",
+      "basic_info": "基本信息",
+      "review_records": "审核记录",
+      "dispatch_info": "分派信息",
+      "target_agent": "目标 Agent",
+      "dispatch_mode": "分派模式",
+      "last_dispatch": "最近分派",
+      "review_gate": "审核门控",
+      "source": "来源"
     },
     "owner_placeholder": "例如 rd-backend-dev"
   },
@@ -305,7 +327,7 @@
     "in_progress": "进行中",
     "review": "审核中",
     "blocked": "已阻塞",
-    "done": "已完成",
+    "done": "完成",
     "no_tasks": "无任务",
     "session": "Session",
     "cron": "Cron",
@@ -319,7 +341,26 @@
     "dragFailed": "操作失败",
     "noCards": "暂无卡片",
     "tokens": "tokens",
-    "syncError": "同步失败"
+    "syncError": "同步失败",
+    "execute": "执行",
+    "notConnected": "Gateway 未连接",
+    "executeFailed": "执行失败",
+    "step_starting": "启动中...",
+    "step_analyzing": "分析任务中...",
+    "step_planning": "制定执行计划...",
+    "step_executing": "执行中...",
+    "step_verifying": "验证结果...",
+    "error": "出错",
+    "completed": "已完成",
+    "createTask": "新建任务",
+    "manage": "管理",
+    "running": "执行中",
+    "createSuccess": "任务已创建",
+    "taskTitle": "标题",
+    "taskDesc": "描述",
+    "priority": "优先级",
+    "status": "状态",
+    "projectId": "项目ID"
   },
   "lifecycle": {
     "eyebrow": "Phase 4",

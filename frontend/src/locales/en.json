@@ -21,7 +21,16 @@
     "off": "Off",
     "confirm_delete_project": "Delete this project? Associated tasks will also be deleted.",
     "confirm_delete_task": "Delete this task?",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "confirm_delete": "Confirm Delete",
+    "select_all": "Select All",
+    "selected": "selected",
+    "batch_delete": "Batch Delete",
+    "confirm_batch_delete": "Delete {{count}} tasks?",
+    "deleted": "Deleted",
+    "batch_deleted": "{{count}} tasks deleted",
+    "unsaved": "Unsaved",
+    "saved": "Saved"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -197,7 +206,10 @@
     "err_name": "Job name required",
     "err_schedule": "Cron expression required",
     "err_at": "Execution time required",
-    "err_every": "Interval (minutes) required"
+    "err_every": "Interval (minutes) required",
+    "active": "Active",
+    "disabled": "Disabled",
+    "running": "Running"
   },
   "chat": {
     "title": "Agent Chat",
@@ -284,7 +296,17 @@
       "risk": "Risk Level",
       "no_description": "No description",
       "status_history": "Status History",
-      "no_history": "No status changes yet"
+      "no_history": "No status changes yet",
+      "progress": "Task Progress",
+      "thoughts": "Thought Chain",
+      "basic_info": "Basic Info",
+      "review_records": "Review Records",
+      "dispatch_info": "Dispatch Info",
+      "target_agent": "Target Agent",
+      "dispatch_mode": "Dispatch Mode",
+      "last_dispatch": "Last Dispatch",
+      "review_gate": "Review Gate",
+      "source": "Source"
     },
     "owner_placeholder": "e.g. rd-backend-dev"
   },
@@ -319,7 +341,26 @@
     "dragFailed": "Action failed",
     "noCards": "No cards",
     "tokens": "tokens",
-    "syncError": "Sync error"
+    "syncError": "Sync error",
+    "execute": "Execute",
+    "notConnected": "Gateway not connected",
+    "executeFailed": "Execution failed",
+    "step_starting": "Starting...",
+    "step_analyzing": "Analyzing...",
+    "step_planning": "Planning...",
+    "step_executing": "Executing...",
+    "step_verifying": "Verifying...",
+    "error": "Error",
+    "completed": "Completed",
+    "createTask": "New Task",
+    "manage": "Manage",
+    "running": "Running",
+    "createSuccess": "Task created",
+    "taskTitle": "Title",
+    "taskDesc": "Description",
+    "priority": "Priority",
+    "status": "Status",
+    "projectId": "Project ID"
   },
   "lifecycle": {
     "eyebrow": "Phase 4",

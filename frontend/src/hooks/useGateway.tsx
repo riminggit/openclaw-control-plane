@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import { gatewayClient } from '../lib/gateway-client'
+import { apiGet } from '../api/client'
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -10,7 +11,7 @@ export function useConnectionState(): ConnectionState {
   return state
 }
 
-/** Fetch session list via RPC */
+/** Fetch session list via RPC (with REST fallback) */
 export function useSessions(limit = 50, activeMinutes = 1440) {
   const connState = useConnectionState()
   const [sessions, setSessions] = useState<any[]>([])
@@ -19,14 +20,22 @@ export function useSessions(limit = 50, activeMinutes = 1440) {
   const [loading, setLoading] = useState(false)
 
   const fetch = useCallback(async () => {
-    if (connState !== 'connected') return
     setLoading(true)
     try {
-      const res = await gatewayClient.call('sessions.list', { limit, activeMinutes })
-      const sessions = res?.sessions || (Array.isArray(res) ? res : [])
-      setSessions(sessions)
-      setCount(res?.count ?? sessions.length)
-      setDefaults(res?.defaults ?? null)
+      if (connState === 'connected') {
+        const res = await gatewayClient.call('sessions.list', { limit, activeMinutes })
+        const sessions = res?.sessions || (Array.isArray(res) ? res : [])
+        setSessions(sessions)
+        setCount(res?.count ?? sessions.length)
+        setDefaults(res?.defaults ?? null)
+      } else {
+        // REST fallback when WS is not connected
+        const res = await apiGet<any>(`/api/gateway/sessions?limit=${limit}&active_minutes=${activeMinutes}`)
+        const sessions = res?.sessions || (Array.isArray(res) ? res : [])
+        setSessions(sessions)
+        setCount(res?.count ?? sessions.length)
+        setDefaults(res?.defaults ?? null)
+      }
     } catch { /* ignore */ } finally { setLoading(false) }
   }, [connState, limit, activeMinutes])
 
@@ -41,7 +50,7 @@ export function useSessions(limit = 50, activeMinutes = 1440) {
   return { sessions, count, defaults, loading, refetch: fetch }
 }
 
-/** Fetch Gateway status + health */
+/** Fetch Gateway status + health (with REST fallback) */
 export function useGatewayStatus() {
   const connState = useConnectionState()
   const [status, setStatus] = useState<any>(null)
@@ -49,15 +58,23 @@ export function useGatewayStatus() {
   const [loading, setLoading] = useState(false)
 
   const fetch = useCallback(async () => {
-    if (connState !== 'connected') return
     setLoading(true)
     try {
-      const [s, h] = await Promise.allSettled([
-        gatewayClient.call('status', {}),
-        gatewayClient.call('health', {}),
-      ])
-      if (s.status === 'fulfilled') setStatus(s.value)
-      if (h.status === 'fulfilled') setHealth(h.value)
+      if (connState === 'connected') {
+        const [s, h] = await Promise.allSettled([
+          gatewayClient.call('status', {}),
+          gatewayClient.call('health', {}),
+        ])
+        if (s.status === 'fulfilled') setStatus(s.value)
+        if (h.status === 'fulfilled') setHealth(h.value)
+      } else {
+        const [s, h] = await Promise.allSettled([
+          apiGet<any>('/api/gateway/status'),
+          apiGet<any>('/api/gateway/health'),
+        ])
+        if (s.status === 'fulfilled') setStatus(s.value)
+        if (h.status === 'fulfilled') setHealth(h.value)
+      }
     } catch { /* */ } finally { setLoading(false) }
   }, [connState])
 
@@ -66,7 +83,7 @@ export function useGatewayStatus() {
   return { status, health, loading, refetch: fetch }
 }
 
-/** Fetch cron jobs */
+/** Fetch cron jobs (with REST fallback) */
 export function useCronJobs() {
   const connState = useConnectionState()
   const [jobs, setJobs] = useState<any[]>([])
@@ -74,13 +91,19 @@ export function useCronJobs() {
   const [loading, setLoading] = useState(false)
 
   const fetch = useCallback(async () => {
-    if (connState !== 'connected') return
     setLoading(true)
     try {
-      const res = await gatewayClient.call('cron.list', { includeDisabled: true })
-      const jobs = res?.jobs || (Array.isArray(res) ? res : [])
-      setJobs(jobs)
-      setTotal(res?.total ?? jobs.length)
+      if (connState === 'connected') {
+        const res = await gatewayClient.call('cron.list', { includeDisabled: true })
+        const jobs = res?.jobs || (Array.isArray(res) ? res : [])
+        setJobs(jobs)
+        setTotal(res?.total ?? jobs.length)
+      } else {
+        const res = await apiGet<any>('/api/gateway/cron-jobs?include_disabled=true')
+        const jobs = res?.jobs || (Array.isArray(res) ? res : [])
+        setJobs(jobs)
+        setTotal(res?.total ?? jobs.length)
+      }
     } catch { /* */ } finally { setLoading(false) }
   }, [connState])
 
@@ -95,18 +118,22 @@ export function useCronJobs() {
   return { jobs, total, loading, refetch: fetch }
 }
 
-/** Fetch available models */
+/** Fetch available models (with REST fallback) */
 export function useModels() {
   const connState = useConnectionState()
   const [models, setModels] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
 
   const fetch = useCallback(async () => {
-    if (connState !== 'connected') return
     setLoading(true)
     try {
-      const res = await gatewayClient.call('models.list', {})
-      setModels(res?.models || (Array.isArray(res) ? res : []))
+      if (connState === 'connected') {
+        const res = await gatewayClient.call('models.list', {})
+        setModels(res?.models || (Array.isArray(res) ? res : []))
+      } else {
+        const res = await apiGet<any>('/api/gateway/models')
+        setModels(res?.models || (Array.isArray(res) ? res : []))
+      }
     } catch { /* */ } finally { setLoading(false) }
   }, [connState])
 

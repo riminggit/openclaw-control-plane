@@ -134,24 +134,24 @@ export function TaskDetailPage() {
             )}
           </Card>
 
-          <Card title="基本信息" style={{ marginBottom: 16 }}>
+          <Card title={t('tasks.detail.basic_info')} style={{ marginBottom: 16 }}>
             <Descriptions column={2} size="small" bordered>
               <Descriptions.Item label={t('tasks.project')}>{task.projectCode} — {task.projectName || task.projectId?.slice(0, 8)}</Descriptions.Item>
               <Descriptions.Item label={t('tasks.detail.category')}>{task.category || '—'}</Descriptions.Item>
               <Descriptions.Item label={t('tasks.detail.phase')}>{task.phase || '—'}</Descriptions.Item>
               <Descriptions.Item label={t('tasks.owner')}>{task.ownerRole || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Agent">{task.ownerAgentId || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('tasks.detail.target_agent')}>{task.ownerAgentId || '—'}</Descriptions.Item>
               <Descriptions.Item label={t('tasks.detail.risk')}>{task.riskLevel || '—'}</Descriptions.Item>
-              <Descriptions.Item label="审核门控">{task.reviewGateStatus || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('tasks.detail.review_gate')}>{task.reviewGateStatus || '—'}</Descriptions.Item>
               <Descriptions.Item label={t('app.created')}>{task.createdAt ? new Date(task.createdAt).toLocaleString() : '—'}</Descriptions.Item>
               <Descriptions.Item label={t('app.updated')}>{new Date(task.updatedAt).toLocaleString()}</Descriptions.Item>
-              <Descriptions.Item label="来源">{task.sourceChannel || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('tasks.detail.source')}>{task.sourceChannel || '—'}</Descriptions.Item>
             </Descriptions>
           </Card>
 
           {/* Review Gate Section */}
           {transitions.some(tr => tr.from === 'in_progress' && tr.to === 'review') && (
-            <Card title="审核记录" style={{ marginBottom: 16 }}>
+            <Card title={t('tasks.detail.review_records')} style={{ marginBottom: 16 }}>
               <Timeline
                 items={transitions
                   .filter(tr => ['review', 'approved', 'rejected'].includes(tr.to))
@@ -177,11 +177,11 @@ export function TaskDetailPage() {
 
           {/* Dispatch Info */}
           {task.ownerAgentId && (
-            <Card title="分派信息" style={{ marginBottom: 16 }}>
+            <Card title={t('tasks.detail.dispatch_info')} style={{ marginBottom: 16 }}>
               <Descriptions column={2} size="small" bordered>
-                <Descriptions.Item label="目标 Agent">{task.ownerAgentId}</Descriptions.Item>
-                <Descriptions.Item label="分派模式">{task.assigneeSessionKey ? 'sessions_spawn' : 'direct'}</Descriptions.Item>
-                <Descriptions.Item label="最近分派">{task.lastDispatchAt ? new Date(task.lastDispatchAt).toLocaleString() : '—'}</Descriptions.Item>
+                <Descriptions.Item label={t('tasks.detail.target_agent')}>{task.ownerAgentId}</Descriptions.Item>
+                <Descriptions.Item label={t('tasks.detail.dispatch_mode')}>{task.assigneeSessionKey ? 'sessions_spawn' : 'direct'}</Descriptions.Item>
+                <Descriptions.Item label={t('tasks.detail.last_dispatch')}>{task.lastDispatchAt ? new Date(task.lastDispatchAt).toLocaleString() : '—'}</Descriptions.Item>
               </Descriptions>
             </Card>
           )}
@@ -190,24 +190,24 @@ export function TaskDetailPage() {
 
       {/* Progress Tab */}
       {activeTab === 'progress' && (
-        <Card title="任务进度">
+        <Card title={t('tasks.detail.progress')}>
           <TaskProgressPanel taskId={id!} />
         </Card>
       )}
 
       {/* Thoughts Tab */}
       {activeTab === 'thoughts' && (
-        <Card title="思考链路">
+        <Card title={t('tasks.detail.thoughts')}>
           <AgentThoughtPanel taskId={id!} />
         </Card>
       )}
 
       {/* History Tab */}
       {activeTab === 'history' && (
-        <Card title="状态转换历史">
+        <Card title={t('tasks.detail.status_history')}>
           {transLoading ? <Spin style={{ display: 'block', margin: '20px auto' }} /> :
             transitions.length === 0 ? (
-              <Empty description="暂无状态变更记录" style={{ padding: 24 }} />
+              <Empty description={t('tasks.detail.no_history')} style={{ padding: 24 }} />
             ) : (
               <Timeline
                 items={transitions.map(tr => ({

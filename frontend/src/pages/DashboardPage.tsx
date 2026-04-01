@@ -29,16 +29,8 @@ export function DashboardPage() {
     refetchCron()
   }, 30000, [connState])
 
-  if (connState !== 'connected') {
-    return (
-      <div className="empty-state">
-        <div className="empty-state-icon">🔌</div>
-        <div className="empty-state-title">{t('dashboard.not_connected')}</div>
-        <div className="empty-state-desc">{t('dashboard.connect_hint')}</div>
-        <Link to="/settings" className="btn btn-primary" style={{ textDecoration: 'none' }}>{t('gateway.go_settings')}</Link>
-      </div>
-    )
-  }
+  // Show a warning if WS disconnected but still render data (REST fallback)
+  const showWsWarning = connState !== 'connected'
 
   const activeSessions = (sessions || []).filter((s: any) => s.active || s.state === 'active')
   const modelInfo = defaults?.model || status?.model || status?.config?.model || '-'
@@ -51,6 +43,20 @@ export function DashboardPage() {
 
   return (
     <div>
+      {showWsWarning && (
+        <div style={{
+          padding: 'var(--space-2) var(--space-4)',
+          background: 'var(--status-yellow-bg)',
+          borderBottom: '1px solid var(--status-yellow)',
+          color: 'var(--text-secondary)',
+          fontSize: 'var(--text-sm)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          ⚠️ {t('dashboard.not_connected')} — <Link to="/settings" style={{ color: 'var(--accent)' }}>{t('gateway.go_settings')}</Link>
+        </div>
+      )}
       <div className="page-header">
         <p className="page-header-eyebrow">{t('dashboard.eyebrow')}</p>
         <h1>{t('dashboard.title')}</h1>

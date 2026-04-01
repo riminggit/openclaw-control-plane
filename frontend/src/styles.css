@@ -21,8 +21,8 @@
 /* ===== Theme: Dark (Default) ===== */
 :root, [data-theme="dark"] {
   --bg-app: #09090b; --bg-surface: #111113; --bg-surface-hover: #18181b; --bg-surface-active: #1f1f23;
-  --bg-overlay: rgba(0,0,0,0.5); --bg-sidebar: #0c0c0e; --bg-input: #0c0c0e; --bg-card: #111113;
-  --bg-card-hover: #16161a; --bg-modal: #111113; --bg-dropdown: #18181b;
+  --bg-overlay: rgba(0,0,0,0.5); --bg-sidebar: #0c0c0e; --bg-input: #0c0c0e; --bg-card: #141418;
+  --bg-card-hover: #1a1a1f; --bg-modal: #111113; --bg-dropdown: #18181b;
   --bg-skeleton: #1c1c20; --bg-skeleton-shine: #25252a;
   --border-default: #1e1e22; --border-hover: #2a2a30; --border-active: #3a3a42;
   --text-primary: #fafafa; --text-secondary: #a1a1aa; --text-muted: #71717a; --text-inverse: #09090b;
@@ -195,15 +195,15 @@ button { font-family: inherit; font-size: inherit; }
   background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-xl);
   padding: var(--space-5); position: relative; overflow: hidden; transition: all var(--transition-normal);
 }
-.stat-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.stat-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-lg); transform: translateY(-2px); background: var(--bg-card-hover); }
 .stat-card-icon { width: 40px; height: 40px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-3); font-size: 20px; }
 .stat-card-icon.projects { background: var(--status-blue-bg); color: var(--status-blue); }
 .stat-card-icon.tasks { background: var(--status-purple-bg); color: var(--status-purple); }
 .stat-card-icon.blocked { background: var(--status-red-bg); color: var(--status-red); }
 .stat-card-icon.progress { background: var(--status-green-bg); color: var(--status-green); }
-.stat-card-label { font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-1); }
-.stat-card-value { font-size: var(--text-3xl); font-weight: 700; color: var(--text-primary); line-height: 1; }
-.stat-card-bg { position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; border-radius: 50%; opacity: 0.06; }
+.stat-card-label { font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-1); font-weight: 500; }
+.stat-card-value { font-size: var(--text-3xl); font-weight: 700; color: var(--text-primary); line-height: 1; letter-spacing: -0.02em; }
+.stat-card-bg { position: absolute; top: -20px; right: -20px; width: 120px; height: 120px; border-radius: 50%; opacity: 0.08; }
 
 /* ===== Card ===== */
 .card { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-xl); overflow: hidden; transition: all var(--transition-normal); }
