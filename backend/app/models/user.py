@@ -32,7 +32,7 @@ class User(Base):
     created_tasks: Mapped[list["Task"]] = relationship(back_populates="created_by_user")  # noqa: F821
     reviews: Mapped[list["Review"]] = relationship(back_populates="reviewer")  # noqa: F821
     dispatches: Mapped[list["Dispatch"]] = relationship(back_populates="dispatched_by_user")  # noqa: F821
-    events: Mapped[list["ActivityEvent"]] = relationship(back_populates="actor")  # noqa: F821
+    # events: Mapped[list["ActivityEvent"]] = relationship(back_populates="actor")  # ActivityEvent doesn't exist yet
 
 
 class ApiKey(Base):

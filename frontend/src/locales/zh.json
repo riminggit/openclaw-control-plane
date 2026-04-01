@@ -689,5 +689,22 @@
   "nav.extensions": "扩展",
   "nav.communication": "通信",
   "nav.settings": "设置",
-  "logs.word_wrap": "自动换行"
+  "logs.word_wrap": "自动换行",
+  "dashboard.model_settings": "模型设置",
+  "settings.eyebrow": "Configuration",
+  "settings.title": "系统设置",
+  "settings.subtitle": "模型、Provider 和默认配置",
+  "settings.tab_models": "模型 Provider",
+  "settings.tab_defaults": "默认模型",
+  "settings.providers": "模型服务提供商",
+  "settings.models_count": "可用模型",
+  "settings.models_unit": "个",
+  "settings.available_models": "可用模型列表",
+  "settings.default_model": "默认模型设置",
+  "settings.primary_desc": "默认使用的主模型（新会话优先选择）",
+  "settings.fallbacks_desc": "主模型不可用时的备选列表（按顺序尝试）",
+  "settings.save_defaults": "保存默认设置",
+  "settings.save_success": "保存成功，需重启 Gateway 生效",
+  "settings.save_failed": "保存失败",
+  "nav.model_settings": "模型设置"
 }

@@ -60,12 +60,14 @@ app.include_router(extensions_router)
 app.include_router(gateway_rest_router)
 app.include_router(communication_router)
 app.include_router(agent_skills_router)
-from app.api.workflow import router as workflow_router
+from app.api.workflow.templates import router as workflow_router
 app.include_router(workflow_router)
 from app.api.thoughts import router as thoughts_router
 app.include_router(thoughts_router)
 from app.api.progress import router as progress_router
+from app.api.model_config import router as model_config_router
 app.include_router(progress_router)
+app.include_router(model_config_router)
 app.add_middleware(ApiKeyMiddleware)
 
 

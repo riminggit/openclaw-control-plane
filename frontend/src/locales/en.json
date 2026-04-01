@@ -689,5 +689,22 @@
   "nav.extensions": "Extensions",
   "nav.communication": "Communication",
   "nav.settings": "Settings",
-  "logs.word_wrap": "Word Wrap"
+  "logs.word_wrap": "Word Wrap",
+  "dashboard.model_settings": "Model Settings",
+  "settings.eyebrow": "Configuration",
+  "settings.title": "System Settings",
+  "settings.subtitle": "Model providers and default configuration",
+  "settings.tab_models": "Model Providers",
+  "settings.tab_defaults": "Default Model",
+  "settings.providers": "Model Providers",
+  "settings.models_count": "Models",
+  "settings.models_unit": "",
+  "settings.available_models": "Available Models",
+  "settings.default_model": "Default Model Settings",
+  "settings.primary_desc": "Primary model for new sessions",
+  "settings.fallbacks_desc": "Fallback models when primary is unavailable (tried in order)",
+  "settings.save_defaults": "Save Defaults",
+  "settings.save_success": "Saved. Restart Gateway to apply.",
+  "settings.save_failed": "Save failed",
+  "nav.model_settings": "Model Settings"
 }

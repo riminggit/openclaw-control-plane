@@ -112,14 +112,17 @@ export function DashboardPage() {
         <div className="card" style={{ marginTop: 'var(--space-4)' }}>
           <div className="card-header">
             <h2>{t('dashboard.available_models')}</h2>
-            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('app.total', { count: models.length })}</span>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>{t('app.total', { count: models.length })}</span>
+              <Link to="/model-settings?tab=models" className="btn btn-ghost" style={{ fontSize: 'var(--text-sm)' }}>{t('dashboard.model_settings')}</Link>
+            </div>
           </div>
           <div className="card-body" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
             {models.slice(0, 20).map((m: any, i: number) => (
               <div key={m.id || i} style={{
                 padding: 'var(--space-2) var(--space-3)',
                 borderRadius: 'var(--radius-md)',
-                background: 'var(--surface-secondary, var(--card-bg, #1e1e2e))',
+                background: m.id === modelInfo ? 'var(--accent, #1e90ff)' : 'var(--surface-secondary, var(--card-bg, #1e1e2e))',
                 border: '1px solid var(--border-color)',
                 fontSize: 'var(--text-sm)',
               }}>

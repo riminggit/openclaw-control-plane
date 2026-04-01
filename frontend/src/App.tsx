@@ -30,6 +30,7 @@ const SecurityPage = lazy(() => import('./pages/SecurityPage').then(m => ({ defa
 const ExtensionsPage = lazy(() => import('./pages/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })))
 const CommunicationPage = lazy(() => import('./pages/CommunicationPage').then(m => ({ default: m.CommunicationPage })))
 const AgentSkillPage = lazy(() => import('./pages/AgentSkillPage').then(m => ({ default: m.AgentSkillPage })))
+const ModelSettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 
 function PageLoader() {
   return (
@@ -77,6 +78,7 @@ export default function App() {
                   <Route path="cron" element={<CronPage />} />
                   <Route path="chat" element={<ChatPage />} />
                   <Route path="settings" element={<GatewaySettingsPage />} />
+                  <Route path="model-settings" element={<ModelSettingsPage />} />
                   <Route path="kanban" element={<KanbanPage />} />
                   <Route path="tasks" element={<TasksPage />} />
                   <Route path="tasks/:id" element={<TaskDetailPage />} />
