@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/workflow", tags=["workflow"])
 # ── Schemas ───────────────────────────────────────────────
 
 class CreateTaskRequest(BaseModel):
-    project_id: str
+    project_id: Optional[str] = "proj-ocp-001"
     title: str
     description: Optional[str] = None
     category: str = "general"
@@ -113,6 +113,17 @@ def create_task(body: CreateTaskRequest, db: Session = Depends(get_db)):
             "category": task.category, "phase": task.phase, "priority": task.priority, "status": task.status,
             "ownerRole": task.owner_role or "", "ownerAgentId": task.owner_agent_id, "riskLevel": task.risk_level,
             "docSyncRisk": "low" if not task.doc_sync_risk else "high", "createdAt": task.created_at, "updatedAt": task.updated_at}
+
+
+@router.get("/tasks/{task_id}")
+def get_task(task_id: str, db: Session = Depends(get_db)):
+    t = db.query(Task).filter(Task.id == task_id).first()
+    if not t:
+        raise HTTPException(404, "Task not found")
+    return {"id": t.id, "projectId": t.project_id, "title": t.title, "description": t.description,
+            "category": t.category, "phase": t.phase, "priority": t.priority, "status": t.status,
+            "ownerRole": t.owner_role or "", "ownerAgentId": t.owner_agent_id, "riskLevel": t.risk_level,
+            "docSyncRisk": "low" if not t.doc_sync_risk else "high", "createdAt": t.created_at, "updatedAt": t.updated_at}
 
 
 # ── Review Gate ───────────────────────────────────────────

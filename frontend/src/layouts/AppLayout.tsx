@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Dropdown, Button } from 'antd'
-import type { MenuProps } from 'antd'
 import { useTheme, THEMES, type ThemeName } from '../components/ThemeProvider'
 import { useConnectionState } from '../hooks/useGateway'
 
@@ -101,7 +100,7 @@ export function AppLayout() {
         </nav>
         <div className="sidebar-footer">
           <div className="conn-indicator" style={{ color: connState === 'connected' ? 'var(--status-green)' : connState === 'connecting' ? 'var(--status-yellow)' : 'var(--text-muted)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', display: 'inline-block', flexShrink: 0 }} />
             {!collapsed && <span style={{ fontSize: 'var(--text-xs)' }}>{connState === 'connected' ? t('gateway.state_connected') : connState === 'connecting' ? t('gateway.state_connecting') : t('gateway.state_disconnected')}</span>}
           </div>
           <Dropdown
@@ -109,9 +108,9 @@ export function AppLayout() {
               items: THEMES.map(th => ({
                 key: th.name,
                 label: (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                    <span className="color-dot" style={{ background: th.preview }} />
-                    {!collapsed && t(`theme.${th.name}`)}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="theme-swatch" style={{ background: th.preview }} />
+                    {t(`theme.${th.name}`)}
                   </span>
                 ),
                 onClick: () => switchTheme(th.name),
@@ -120,11 +119,12 @@ export function AppLayout() {
             }}
             trigger={['click']}
             placement="topRight"
+            overlayStyle={{ minWidth: collapsed ? 140 : 160 }}
           >
-            <Button type="text" className="dropdown-trigger">
-              🎨
+            <button className="sidebar-footer-btn" type="button">
+              <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>🎨</span>
               {!collapsed && <span>{t('theme.label')}</span>}
-            </Button>
+            </button>
           </Dropdown>
           <Dropdown
             menu={{
@@ -132,15 +132,16 @@ export function AppLayout() {
                 { key: 'zh', label: '中文', onClick: () => switchLang('zh') },
                 { key: 'en', label: 'English', onClick: () => switchLang('en') },
               ],
-              selectedKeys: [i18n.language],
+              selectedKeys: [i18n.language?.startsWith('zh') ? 'zh' : 'en'],
             }}
             trigger={['click']}
             placement="topRight"
+            overlayStyle={{ minWidth: collapsed ? 120 : 140 }}
           >
-            <Button type="text" className="dropdown-trigger">
-              🌐
-              {!collapsed && <span>{t('language.label')}</span>}
-            </Button>
+            <button className="sidebar-footer-btn" type="button">
+              <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>🌐</span>
+              {!collapsed && <span>{i18n.language?.startsWith('zh') ? '中文' : 'English'}</span>}
+            </button>
           </Dropdown>
         </div>
       </aside>

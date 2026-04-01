@@ -452,7 +452,46 @@ export function KanbanPage() {
 
   const handleDragUpdate = async (task: TaskItem, newStatus: string, reason?: string) => {
     try {
-      await tasksApi.update(task.id, { status: newStatus })
+      const currentStatus = task.status?.toLowerCase().replace(/[\s_-]/g, '_')
+      // Map drag targets to workflow state transitions
+      if (newStatus === 'planned' && currentStatus !== 'planned') {
+        // Re-plan: stop if in_progress, or reject if approved
+        if (currentStatus === 'in_progress') {
+          await apiPost(`/workflow/tasks/${task.id}/stop`, {})
+        } else if (currentStatus === 'approved' || currentStatus === 'review') {
+          await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'reject', comment: reason || 'Dragged back to planned' })
+        }
+      } else if (newStatus === 'done') {
+        // Complete: stop then complete
+        if (currentStatus === 'in_progress') {
+          // We don't have a "complete" workflow endpoint that validates, use direct update for now
+          await tasksApi.update(task.id, { status: 'completed' })
+        } else if (currentStatus === 'planned') {
+          // planned -> approved -> dispatch -> in_progress -> completed (skip for drag UX)
+          await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'approve' })
+          await apiPost(`/workflow/tasks/${task.id}/dispatch`, { target_agent_id: 'main' })
+          await tasksApi.update(task.id, { status: 'completed' })
+        }
+      } else if (newStatus === 'in_progress' || newStatus === 'running') {
+        if (currentStatus === 'planned') {
+          await apiPost(`/workflow/tasks/${task.id}/review`, { decision: 'approve' })
+          await apiPost(`/workflow/tasks/${task.id}/dispatch`, { target_agent_id: 'main' })
+        } else if (currentStatus === 'stopped') {
+          await apiPost(`/workflow/tasks/${task.id}/resume`, {})
+        }
+      } else if (newStatus === 'review') {
+        if (currentStatus === 'in_progress') {
+          // Move to review_pending via direct status update (workflow doesn't have explicit review entry from in_progress beyond state machine)
+          await tasksApi.update(task.id, { status: 'review_pending' })
+        }
+      } else if (newStatus === 'blocked') {
+        if (currentStatus === 'in_progress') {
+          await apiPost(`/workflow/tasks/${task.id}/stop`, { reason: reason || 'Blocked' })
+        }
+      } else {
+        // Fallback to direct update for other transitions
+        await tasksApi.update(task.id, { status: newStatus })
+      }
       setToast({ msg: t('kanban.dragSuccess'), type: 'success' })
       setTimeout(fetchData, 300)
     } catch (e: any) {
