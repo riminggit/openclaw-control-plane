@@ -1129,3 +1129,431 @@ async def retry_step_execution(
 async def skip_step_execution(
     instance_id: str,
     step_id: str,
+    request: SkipStepRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    跳过步骤（标记 skipped，进入下一步）
+    
+    权限: editor
+    """
+    logger.info(f"跳过步骤: instance_id={instance_id}, step_id={step_id}")
+    
+    # 查询步骤执行记录
+    step_exec = db.query(StepExecution).filter(
+        StepExecution.workflow_instance_id == instance_id,
+        StepExecution.id == step_id
+    ).first()
+    
+    if not step_exec:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "STEP_NOT_FOUND",
+                "message": f"步骤 {step_id} 不存在",
+            }
+        )
+    
+    # 检查状态
+    if step_exec.status not in ["pending", "failed", "cancelled"]:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "STEP_NOT_SKIPPABLE",
+                "message": f"步骤状态为 '{step_exec.status}'，无法跳过",
+            }
+        )
+    
+    # 更新状态
+    now = _now()
+    step_exec.status = "skipped"
+    step_exec.completed_at = now
+    step_exec.updated_at = now
+    
+    # 记录日志
+    log = WorkflowLog(
+        id=_generate_uuid(),
+        workflow_instance_id=instance_id,
+        step_execution_id=step_id,
+        timestamp=now,
+        level="WARN",
+        message=f"步骤 {step_exec.name} 已跳过: {request.reason}",
+        created_at=now,
+    )
+    db.add(log)
+    
+    db.commit()
+    
+    # 推进到下一步
+    instance = db.query(WorkflowInstance).filter(WorkflowInstance.id == instance_id).first()
+    _advance_workflow(instance, db)
+    
+    db.refresh(step_exec)
+    
+    # 获取步骤定义
+    step_def = db.query(StepDefinition).filter(
+        StepDefinition.template_id == instance.template_id,
+        StepDefinition.step_id == step_exec.step_id
+    ).first()
+    
+    human_review = bool(step_def.human_review) if step_def else False
+    
+    return StepExecutionResponse(
+        id=step_exec.id,
+        workflow_instance_id=step_exec.workflow_instance_id,
+        step_id=step_exec.step_id,
+        name=step_exec.name,
+        status=StepStatus(step_exec.status),
+        agent_id=step_exec.agent_id,
+        agent_name=step_exec.agent_name,
+        input=_parse_json(step_exec.input) if step_exec.input else None,
+        output=_parse_json(step_exec.output) if step_exec.output else None,
+        progress=step_exec.progress,
+        progress_message=step_exec.progress_message,
+        started_at=step_exec.started_at,
+        completed_at=step_exec.completed_at,
+        duration=step_exec.duration,
+        retry_count=step_exec.retry_count,
+        max_retries=step_exec.max_retries,
+        error_message=step_exec.error_message,
+        force_completed=bool(step_exec.force_completed),
+        human_review=human_review,
+    )
+
+
+@router.post("/{instance_id}/steps/{step_id}/approve", response_model=StepExecutionResponse)
+async def approve_step_execution(
+    instance_id: str,
+    step_id: str,
+    request: ApproveReviewRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    审核通过
+    
+    权限: reviewer
+    """
+    logger.info(f"审核通过步骤: instance_id={instance_id}, step_id={step_id}")
+    
+    # 查询步骤执行记录
+    step_exec = db.query(StepExecution).filter(
+        StepExecution.workflow_instance_id == instance_id,
+        StepExecution.id == step_id
+    ).first()
+    
+    if not step_exec:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "STEP_NOT_FOUND",
+                "message": f"步骤 {step_id} 不存在",
+            }
+        )
+    
+    # 检查状态
+    if step_exec.status != "awaiting_review":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "STEP_NOT_AWAITING_REVIEW",
+                "message": f"步骤状态为 '{step_exec.status}'，只有 awaiting_review 状态才能审核",
+            }
+        )
+    
+    # 更新状态
+    now = _now()
+    step_exec.status = "approved"
+    step_exec.completed_at = now
+    step_exec.updated_at = now
+    
+    # 创建审核记录
+    review = ReviewRecord(
+        id=_generate_uuid(),
+        workflow_instance_id=instance_id,
+        step_execution_id=step_id,
+        reviewer_id=_get_current_user_id(),
+        action="approve",
+        comment=request.comment,
+        created_at=now,
+        updated_at=now,
+        timeout_action="auto_approve",
+        review_round=1,
+    )
+    db.add(review)
+    
+    # 记录日志
+    log = WorkflowLog(
+        id=_generate_uuid(),
+        workflow_instance_id=instance_id,
+        step_execution_id=step_id,
+        timestamp=now,
+        level="INFO",
+        message=f"步骤 {step_exec.name} 审核通过",
+        metadata_json=_to_json({"comment": request.comment}) if request.comment else None,
+        created_at=now,
+    )
+    db.add(log)
+    
+    db.commit()
+    
+    # 推进到下一步
+    instance = db.query(WorkflowInstance).filter(WorkflowInstance.id == instance_id).first()
+    _advance_workflow(instance, db)
+    
+    db.refresh(step_exec)
+    
+    # 获取步骤定义
+    step_def = db.query(StepDefinition).filter(
+        StepDefinition.template_id == instance.template_id,
+        StepDefinition.step_id == step_exec.step_id
+    ).first()
+    
+    human_review = bool(step_def.human_review) if step_def else False
+    
+    return StepExecutionResponse(
+        id=step_exec.id,
+        workflow_instance_id=step_exec.workflow_instance_id,
+        step_id=step_exec.step_id,
+        name=step_exec.name,
+        status=StepStatus(step_exec.status),
+        agent_id=step_exec.agent_id,
+        agent_name=step_exec.agent_name,
+        input=_parse_json(step_exec.input) if step_exec.input else None,
+        output=_parse_json(step_exec.output) if step_exec.output else None,
+        progress=step_exec.progress,
+        progress_message=step_exec.progress_message,
+        started_at=step_exec.started_at,
+        completed_at=step_exec.completed_at,
+        duration=step_exec.duration,
+        retry_count=step_exec.retry_count,
+        max_retries=step_exec.max_retries,
+        error_message=step_exec.error_message,
+        force_completed=bool(step_exec.force_completed),
+        human_review=human_review,
+    )
+
+
+@router.post("/{instance_id}/steps/{step_id}/reject", response_model=StepExecutionResponse)
+async def reject_step_execution(
+    instance_id: str,
+    step_id: str,
+    request: RejectReviewRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    审核拒绝
+    
+    权限: reviewer
+    """
+    logger.info(f"审核拒绝步骤: instance_id={instance_id}, step_id={step_id}")
+    
+    # 查询步骤执行记录
+    step_exec = db.query(StepExecution).filter(
+        StepExecution.workflow_instance_id == instance_id,
+        StepExecution.id == step_id
+    ).first()
+    
+    if not step_exec:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "STEP_NOT_FOUND",
+                "message": f"步骤 {step_id} 不存在",
+            }
+        )
+    
+    # 检查状态
+    if step_exec.status != "awaiting_review":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "STEP_NOT_AWAITING_REVIEW",
+                "message": f"步骤状态为 '{step_exec.status}'，只有 awaiting_review 状态才能审核",
+            }
+        )
+    
+    # 更新状态
+    now = _now()
+    step_exec.status = "rejected"
+    step_exec.completed_at = now
+    step_exec.updated_at = now
+    
+    # 创建审核记录
+    review = ReviewRecord(
+        id=_generate_uuid(),
+        workflow_instance_id=instance_id,
+        step_execution_id=step_id,
+        reviewer_id=_get_current_user_id(),
+        action="reject",
+        comment=request.comment,
+        created_at=now,
+        updated_at=now,
+        timeout_action="auto_reject",
+        review_round=1,
+    )
+    db.add(review)
+    
+    # 记录日志
+    log = WorkflowLog(
+        id=_generate_uuid(),
+        workflow_instance_id=instance_id,
+        step_execution_id=step_id,
+        timestamp=now,
+        level="WARN",
+        message=f"步骤 {step_exec.name} 审核拒绝: {request.comment}",
+        created_at=now,
+    )
+    db.add(log)
+    
+    # 更新工作流状态为 failed
+    instance = db.query(WorkflowInstance).filter(WorkflowInstance.id == instance_id).first()
+    instance.status = "failed"
+    instance.error_message = f"步骤 {step_exec.name} 审核被拒绝: {request.comment}"
+    instance.completed_at = now
+    
+    # 记录事件
+    event = WorkflowEvent(
+        id=_generate_uuid(),
+        workflow_instance_id=instance_id,
+        step_execution_id=step_id,
+        event_type="workflow.failed",
+        event_data=_to_json({
+            "reason": "step_rejected",
+            "step_id": step_id,
+            "comment": request.comment,
+        }),
+        actor_type="user",
+        actor_id=_get_current_user_id(),
+        timestamp=now,
+        created_at=now,
+    )
+    db.add(event)
+    
+    db.commit()
+    db.refresh(step_exec)
+    
+    # 获取步骤定义
+    step_def = db.query(StepDefinition).filter(
+        StepDefinition.template_id == instance.template_id,
+        StepDefinition.step_id == step_exec.step_id
+    ).first()
+    
+    human_review = bool(step_def.human_review) if step_def else False
+    
+    return StepExecutionResponse(
+        id=step_exec.id,
+        workflow_instance_id=step_exec.workflow_instance_id,
+        step_id=step_exec.step_id,
+        name=step_exec.name,
+        status=StepStatus(step_exec.status),
+        agent_id=step_exec.agent_id,
+        agent_name=step_exec.agent_name,
+        input=_parse_json(step_exec.input) if step_exec.input else None,
+        output=_parse_json(step_exec.output) if step_exec.output else None,
+        progress=step_exec.progress,
+        progress_message=step_exec.progress_message,
+        started_at=step_exec.started_at,
+        completed_at=step_exec.completed_at,
+        duration=step_exec.duration,
+        retry_count=step_exec.retry_count,
+        max_retries=step_exec.max_retries,
+        error_message=step_exec.error_message,
+        force_completed=bool(step_exec.force_completed),
+        human_review=human_review,
+    )
+
+
+@router.get("/{instance_id}/logs", response_model=LogListResponse)
+async def list_workflow_logs(
+    instance_id: str,
+    step_id: Optional[str] = Query(None, description="步骤 ID 筛选"),
+    level: Optional[str] = Query(None, description="日志级别筛选 (INFO/WARN/ERROR/DEBUG)"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(100, ge=1, le=500, description="每页数量"),
+    db: Session = Depends(get_db),
+):
+    """
+    获取工作流日志
+    
+    权限: viewer
+    """
+    logger.info(f"获取工作流日志: instance_id={instance_id}")
+    
+    # 查询实例
+    instance = db.query(WorkflowInstance).filter(WorkflowInstance.id == instance_id).first()
+    
+    if not instance:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "INSTANCE_NOT_FOUND",
+                "message": f"工作流实例 {instance_id} 不存在",
+            }
+        )
+    
+    # 构建查询
+    query = db.query(WorkflowLog).filter(WorkflowLog.workflow_instance_id == instance_id)
+    
+    # 应用筛选
+    if step_id:
+        query = query.filter(WorkflowLog.step_execution_id == step_id)
+    
+    if level:
+        query = query.filter(WorkflowLog.level == level)
+    
+    # 获取总数
+    total = query.count()
+    
+    # 应用排序和分页
+    query = query.order_by(WorkflowLog.timestamp.desc())
+    offset = (page - 1) * page_size
+    logs = query.offset(offset).limit(page_size).all()
+    
+    # 计算总页数
+    total_pages = (total + page_size - 1) // page_size
+    
+    # 转换为响应格式
+    data = [
+        LogResponse(
+            id=log.id,
+            step_execution_id=log.step_execution_id,
+            timestamp=log.timestamp,
+            level=log.level,
+            message=log.message,
+            metadata=_parse_json(log.metadata_json) if log.metadata_json else None,
+        )
+        for log in logs
+    ]
+    
+    return LogListResponse(
+        data=data,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
+
+
+# ── Phase 5: Gateway 集成 ──────────────────────────────────────────────────
+
+@router.get("/agents", tags=["workflow-gateway"])
+async def list_available_agents():
+    """
+    获取可用 agent 列表
+    
+    权限: viewer
+    """
+    logger.info("获取可用 agent 列表")
+    
+    # 从 openclaw.json 读取 agent 列表
+    agents = _get_openclaw_agents()
+    
+    return {
+        "data": agents,
+        "total": len(agents),
+    }
+
+
+# ── 导出路由器 ──────────────────────────────────────────────────────────
+
+__all__ = ["router"]
