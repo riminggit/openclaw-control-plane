@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Tag, Table, Switch, Popconfirm, Checkbox, Empty, Card, Row, Col, Statistic, Typography, Progress, message, Space } from 'antd'
+import { Button, Tag, Table, Switch, Popconfirm, Empty, Card, Row, Col, Statistic, Typography, Progress, message, Space } from 'antd'
 import { gatewayClient } from '../lib/gateway-client'
 import { useConnectionState } from '../hooks/useGateway'
 
@@ -156,7 +156,6 @@ export function AgentLifecyclePage() {
   const agentColumns = [
     {
       title: '', dataIndex: 'session_key', width: 48,
-      render: (key: string) => <Checkbox checked={selected.has(key)} onChange={() => toggleSelect(key)} />,
     },
     { title: t('lifecycle.label'), dataIndex: 'agent_label', key: 'label',
       render: (label: string | null, r: LifecycleAgent) => (
