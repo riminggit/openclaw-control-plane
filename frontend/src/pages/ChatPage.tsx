@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConnectionState } from '../hooks/useGateway'
 import { gatewayClient } from '../lib/gateway-client'
-import { Button, Input, Tag, Card, Empty, Switch, Checkbox } from 'antd'
+import { Button, Input, Tag, Card, Empty, Switch, Checkbox, Upload, Image } from 'antd'
+import { UploadOutlined, PaperClipOutlined, CloseOutlined, PictureOutlined } from '@ant-design/icons'
 
 
 interface ChatMsg {
@@ -12,6 +13,8 @@ interface ChatMsg {
   timestamp?: string
   _type?: 'user' | 'assistant' | 'tool'
   session_key?: string
+  image?: { url: string; mimeType?: string }
+
 }
 
 type Tab = 'chat' | 'all' | 'search' | 'broadcast' | 'bookmarks'
@@ -24,6 +27,7 @@ export function ChatPage() {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [aborting, setAborting] = useState(false)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Search state
@@ -74,18 +78,30 @@ export function ChatPage() {
   }, [connState])
 
   const handleSend = async () => {
-    if (!input.trim()) return
+    if (!input.trim() && !imagePreview) return
     const msg = input.trim()
     setInput('')
+    setImagePreview(null)
+    const msgObj: any = { role: 'user', content: msg, timestamp: new Date().toISOString(), _type: 'user' }
+    if (imagePreview) {
+      msgObj.image = { url: imagePreview, mimeType: 'image/png' }
+    }
     setSending(true)
-    setMessages(prev => [...prev, { role: 'user', content: msg, timestamp: new Date().toISOString(), _type: 'user' }])
+    setMessages(prev => [...prev, msgObj])
     try {
-      await gatewayClient.call('chat.send', { message: msg, idempotencyKey: `${Date.now()}-${Math.random()}` })
+      await gatewayClient.call('chat.send', msgObj)
     } catch {
       setMessages(prev => [...prev, { role: 'system', content: '❌ Failed to send', timestamp: new Date().toISOString() }])
       setSending(false)
     }
   }
+
+  const handleImageUpload = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => setImagePreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+  const clearImage = () => setImagePreview(null)
 
   const handleAbort = async () => {
     setAborting(true)
@@ -229,7 +245,10 @@ export function ChatPage() {
                   {msg.role === 'user' ? '👤 You' : msg.role === 'system' ? '⚙️ System' : '🤖 Agent'}
                   {msg.timestamp && <span style={{ marginLeft: 'var(--space-2)' }}>{new Date(msg.timestamp).toLocaleTimeString()}</span>}
                 </div>
-                <div style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>{msg.content}</div>
+                <div style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>
+                  {msg.content}
+                  {msg.image?.url && <img src={msg.image.url} alt="attachment" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 'var(--radius-md)', marginTop: 'var(--space-2)', display: 'block' }} />}
+                </div>
                 {msg.toolCalls?.map((tc: any, j: number) => (
                   <span key={j} className="badge badge-active" style={{ marginRight: 'var(--space-1)', fontSize: 'var(--text-xs)', marginTop: 'var(--space-1)', display: 'inline-block' }}>
                     🔧 {tc.name || tc.function?.name || 'tool'}
@@ -244,11 +263,21 @@ export function ChatPage() {
             )}
             <div ref={bottomRef} />
           </div>
-          <div style={{ borderTop: '1px solid var(--border-color)', padding: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
+          {/* Image Preview */}
+          {imagePreview && (
+            <div style={{ padding: '0 0 var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <Image src={imagePreview} alt="preview" style={{ maxWidth: 200, maxHeight: 120, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }} />
+              <Button size="small" icon={<CloseOutlined />} onClick={clearImage} danger type="text" />
+            </div>
+          )}
+          <div style={{ borderTop: '1px solid var(--border-color)', padding: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
+            <Upload accept="image/*" showUploadList={false} beforeUpload={(file) => handleImageUpload(file)} maxCount={1}>
+              <Button icon={<PictureOutlined />} />
+            </Upload>
             <Input style={{ flex: 1 }} value={input} onChange={e => setInput(e.target.value)}
               placeholder={t('chat.placeholder')} onPressEnter={e => !e.shiftKey && handleSend()} disabled={sending} />
             {sending && <Button danger onClick={handleAbort} disabled={aborting}>{t('chat.abort')}</Button>}
-            <Button type="primary" onClick={handleSend} disabled={sending || !input.trim()}>{t('chat.send')}</Button>
+            <Button type="primary" onClick={handleSend} disabled={sending || (!input.trim() && !imagePreview)}>{t('chat.send')}</Button>
           </div>
         </div>
       )}
