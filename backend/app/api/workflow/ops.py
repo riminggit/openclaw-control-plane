@@ -1,5 +1,6 @@
 """Task workflow API — state machine, review gate, dispatch, intervention."""
 
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, Field
@@ -37,6 +38,11 @@ class ReviewRequest(BaseModel):
     comment: Optional[str] = None
     reviewer_role: Optional[str] = None
     reviewer_agent_id: Optional[str] = None
+    
+    def model_post_init(self, __context):
+        # L-05: Require comment when rejecting
+        if self.decision == "reject" and not self.comment:
+            raise ValueError("Comment is required when rejecting a review")
 
 class DispatchRequest(BaseModel):
     target_agent_id: str
@@ -87,7 +93,7 @@ def list_tasks(
 @router.post("/tasks", status_code=201)
 def create_task(body: CreateTaskRequest, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc).isoformat()
-    task_id = f"task-{__import__('uuid').uuid4().hex[:12]}"
+    task_id = f"task-{uuid.uuid4().hex[:12]}"
     task = Task(
         id=task_id,
         project_id=body.project_id,
@@ -142,7 +148,6 @@ def review_task(task_id: str, body: ReviewRequest, db: Session = Depends(get_db)
         raise HTTPException(400, str(e))
 
     old_status = task.status
-    task.status = target
     task.review_gate_status = body.decision
     task.review_log = body.comment or ""
     task.updated_at = datetime.now(timezone.utc).isoformat()
@@ -151,15 +156,15 @@ def review_task(task_id: str, body: ReviewRequest, db: Session = Depends(get_db)
         task.status = "planned"
         log_transition(db, task_id, old_status, "rejected", body.reviewer_role or "system", body.comment)
         log_transition(db, task_id, "rejected", "planned", body.reviewer_role or "system", "Auto-return for rework")
-
-    log_transition(db, task_id, old_status, task.status, body.reviewer_role or "system", body.comment)
+    else:
+        log_transition(db, task_id, old_status, task.status, body.reviewer_role or "system", body.comment)
 
     # Create ReviewGate record
     now = datetime.now(timezone.utc).isoformat()
     existing_gates = db.query(ReviewGate).filter(ReviewGate.task_id == task_id).order_by(ReviewGate.round.desc()).first()
     next_round = (existing_gates.round + 1) if existing_gates else 1
     gate = ReviewGate(
-        id=f"rg-{__import__('uuid').uuid4().hex[:12]}",
+        id=f"rg-{uuid.uuid4().hex[:12]}",
         task_id=task_id,
         gate_type="workflow",
         reviewer_role=body.reviewer_role,
@@ -208,7 +213,7 @@ def dispatch_task(task_id: str, body: DispatchRequest, db: Session = Depends(get
     # Create DispatchJob record
     import json
     job = DispatchJob(
-        id=f"dj-{__import__('uuid').uuid4().hex[:12]}",
+        id=f"dj-{uuid.uuid4().hex[:12]}",
         task_id=task_id,
         dispatch_mode=body.dispatch_mode,
         target_agent_id=body.target_agent_id,
@@ -376,7 +381,7 @@ def heartbeat(db: Session = Depends(get_db)):
 
 def _log_activity(db, task: Task, event_type: str, actor: str, message: str):
     log = ActivityLog(
-        id=f"al-{__import__('uuid').uuid4().hex[:12]}",
+        id=f"al-{uuid.uuid4().hex[:12]}",
         project_id=task.project_id,
         task_id=task.id,
         event_type=event_type,

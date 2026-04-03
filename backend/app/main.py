@@ -35,11 +35,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.app_name, version="0.2.0", lifespan=lifespan)
 
 origins = [item.strip() for item in settings.cors_origins.split(",") if item.strip()]
+# M-09: In dev mode, allow common local development origins as fallback
+if not origins and settings.app_env == "dev":
+    origins = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins if origins else [],
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
     allow_credentials=True,
 )
 app.include_router(router)
@@ -72,6 +75,25 @@ from app.api.progress import router as progress_router
 from app.api.model_config import router as model_config_router
 app.include_router(progress_router)
 app.include_router(model_config_router)
+
+# v3 API routes
+from app.api.v2.feature_flags import router as v2_feature_flags_router
+app.include_router(v2_feature_flags_router)
+
+# Phase 3 v2 API routes
+from app.api.v2.verification import router as v2_verification_router
+from app.api.v2.plugins import router as v2_plugins_router
+from app.api.v2.cron import router as v2_cron_router
+from app.api.v2.triggers import router as v2_triggers_router
+from app.api.v2.lsp import router as v2_lsp_router
+app.include_router(v2_verification_router)
+app.include_router(v2_plugins_router)
+app.include_router(v2_cron_router)
+app.include_router(v2_triggers_router)
+app.include_router(v2_lsp_router)
+
+# M-10: ApiKeyMiddleware added BEFORE CORSMiddleware so it executes AFTER CORS
+# (Starlette middleware executes in reverse order of addition)
 app.add_middleware(ApiKeyMiddleware)
 
 

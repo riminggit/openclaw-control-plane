@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
+from app.core.auth import get_current_user_id
 from app.db import get_db
 from app.models.workflow import (
     WorkflowTemplate,
@@ -29,6 +30,8 @@ from app.schemas.workflow import (
     TemplateStatus,
     DAGDefinition,
     WorkflowConfig,
+    DuplicateTemplateRequest,
+    RollbackRequest,
 )
 
 # 路由器定义
@@ -43,11 +46,6 @@ logger = logging.getLogger(__name__)
 def _generate_uuid() -> str:
     """生成 UUID"""
     return str(uuid4())
-
-
-def _get_current_user_id() -> str:
-    """获取当前用户 ID（临时硬编码，待集成认证系统）"""
-    return "user-001"
 
 
 def _validate_dag(dag: DAGDefinition) -> List[str]:
@@ -86,7 +84,28 @@ def _validate_dag(dag: DAGDefinition) -> List[str]:
     if not has_start:
         errors.append("DAG 必须包含至少一个起始节点（无依赖的步骤）")
     
-    # 5. TODO: 检查循环依赖（需要实现拓扑排序）
+    # 5. 检查循环依赖（拓扑排序 / Kahn 算法）
+    # 构建邻接表和入度表
+    adj: dict[str, List[str]] = {sid: [] for sid in step_id_set}
+    in_degree: dict[str, int] = {sid: 0 for sid in step_id_set}
+    for edge in dag.edges:
+        if edge.source in step_id_set and edge.target in step_id_set:
+            adj[edge.source].append(edge.target)
+            in_degree[edge.target] += 1
+    
+    # Kahn 算法
+    queue = [sid for sid, deg in in_degree.items() if deg == 0]
+    visited_count = 0
+    while queue:
+        node = queue.pop(0)
+        visited_count += 1
+        for neighbor in adj[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+    
+    if visited_count != len(step_id_set):
+        errors.append("DAG 中存在循环依赖")
     
     return errors
 
@@ -166,6 +185,9 @@ async def list_workflow_templates(
     total = query.count()
     
     # 应用排序
+    allowed_sort_fields = {"created_at", "updated_at", "name", "status", "version", "usage_count", "published_at"}
+    if sort_by not in allowed_sort_fields:
+        raise HTTPException(status_code=400, detail=f"Invalid sort field: {sort_by}. Allowed: {sorted(allowed_sort_fields)}")
     order_column = getattr(WorkflowTemplate, sort_by, WorkflowTemplate.created_at)
     if sort_order == "desc":
         query = query.order_by(order_column.desc())
@@ -274,6 +296,7 @@ async def get_workflow_template(
 async def create_workflow_template(
     request: WorkflowTemplateCreate,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     创建模板
@@ -297,8 +320,7 @@ async def create_workflow_template(
     # 创建模板记录
     template_id = _generate_uuid()
     now = datetime.now(timezone.utc).isoformat()
-    user_id = _get_current_user_id()
-    
+
     template = WorkflowTemplate(
         id=template_id,
         name=request.name,
@@ -382,6 +404,7 @@ async def update_workflow_template(
     template_id: str,
     request: WorkflowTemplateUpdate,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     更新模板
@@ -461,10 +484,19 @@ async def update_workflow_template(
     
     # 创建新版本记录
     if request.dag is not None or request.config is not None:
-        # 递增版本号
-        version_parts = template.version.split(".")
-        major = int(version_parts[0][1:])  # 去掉 'v'
-        minor = int(version_parts[1]) + 1
+        # 递增版本号（安全解析）
+        try:
+            version_parts = template.version.split(".")
+            major_str = version_parts[0]
+            if major_str.startswith("v"):
+                major = int(major_str[1:])
+            else:
+                major = int(major_str)
+            minor = int(version_parts[1]) if len(version_parts) > 1 else 0
+            minor += 1
+        except (ValueError, IndexError):
+            major = 1
+            minor = 1
         new_version = f"v{major}.{minor}"
         
         version = WorkflowTemplateVersion(
@@ -475,7 +507,7 @@ async def update_workflow_template(
             config=template.config,
             change_summary="更新模板",
             created_at=datetime.now(timezone.utc).isoformat(),
-            created_by=_get_current_user_id(),
+            created_by=user_id,
         )
         db.add(version)
         template.version = new_version
@@ -705,20 +737,17 @@ async def archive_workflow_template(
 @router.post("/{template_id}/duplicate", response_model=WorkflowTemplateResponse, status_code=201)
 async def duplicate_workflow_template(
     template_id: str,
-    request: BaseModel,
+    request: DuplicateTemplateRequest,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     复制模板
     
     权限: editor
     """
-    # 定义请求 schema
-    class DuplicateRequest(BaseModel):
-        name: str = Field(..., min_length=1, max_length=200)
-        description: Optional[str] = None
-    
-    req = DuplicateRequest(**request.model_dump())
+    from app.schemas.workflow import DuplicateTemplateRequest as _DuplicateTemplateRequest
+    req = request
     
     logger.info(f"复制模板: template_id={template_id}, new_name={req.name}")
     
@@ -738,8 +767,7 @@ async def duplicate_workflow_template(
     # 创建新模板
     template_id_new = _generate_uuid()
     now = datetime.now(timezone.utc).isoformat()
-    user_id = _get_current_user_id()
-    
+
     new_template = WorkflowTemplate(
         id=template_id_new,
         name=req.name,
@@ -901,19 +929,17 @@ async def list_template_versions(
 @router.post("/{template_id}/rollback", response_model=WorkflowTemplateResponse)
 async def rollback_template_version(
     template_id: str,
-    request: BaseModel,
+    request: RollbackRequest,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     回滚到指定版本
     
     权限: editor
     """
-    # 定义请求 schema
-    class RollbackRequest(BaseModel):
-        version: str = Field(..., description="目标版本号")
-    
-    req = RollbackRequest(**request.model_dump())
+    from app.schemas.workflow import RollbackRequest as _RollbackRequest
+    req = request
     
     logger.info(f"回滚模板版本: template_id={template_id}, version={req.version}")
     
@@ -966,7 +992,7 @@ async def rollback_template_version(
         config=target_version.config,
         change_summary=f"回滚到版本 {req.version}",
         created_at=datetime.now(timezone.utc).isoformat(),
-        created_by=_get_current_user_id(),
+        created_by=user_id,
     )
     db.add(version)
     template.version = new_version

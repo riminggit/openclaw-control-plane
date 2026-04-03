@@ -1,14 +1,18 @@
 """MVP database layer — SQLite, matches docs/openclaw-control-plane-schema.sql."""
 
-import os
 import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./control_plane.db")
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
+from app.core.config import settings
+
+DATABASE_URL = settings.database_url
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
+)
 SessionLocal = sessionmaker(bind=engine)
 
 
@@ -275,6 +279,61 @@ class ChatBookmark(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    # 工作流模型挂在 app.models.base.Base 上；import app.models 会注册 PostgreSQL 专用表，
+    # SQLite 无法创建 ARRAY 等类型，因此仅对 workflow 相关 Table 执行 create_all。
+    from app.models.workflow import (
+        WorkflowArtifact,
+        WorkflowEvent,
+        WorkflowInstance,
+        WorkflowLog,
+        WorkflowSchedulerQueue,
+        WorkflowTemplate,
+        WorkflowTemplateVersion,
+        StepDefinition,
+        StepExecution,
+        ReviewRecord,
+    )
+
+    wf_tables = [
+        WorkflowTemplate.__table__,
+        WorkflowInstance.__table__,
+        StepDefinition.__table__,
+        StepExecution.__table__,
+        ReviewRecord.__table__,
+        WorkflowLog.__table__,
+        WorkflowTemplateVersion.__table__,
+        WorkflowSchedulerQueue.__table__,
+        WorkflowArtifact.__table__,
+        WorkflowEvent.__table__,
+    ]
+    WorkflowTemplate.__table__.metadata.create_all(bind=engine, tables=wf_tables)
+
+    # Phase 3 — Cron & Trigger tables
+    from app.models.cron import CronJob, CronExecution, TriggerConfig, TriggerEvent  # noqa: F401
+
+    p3_tables = [
+        CronJob.__table__,
+        CronExecution.__table__,
+        TriggerConfig.__table__,
+        TriggerEvent.__table__,
+    ]
+    CronJob.__table__.metadata.create_all(bind=engine, tables=p3_tables)
+
+    # Phase 3 — Verification, Plugin, LSP tables
+    from app.models.phase3 import (  # noqa: F401
+        VerificationReportRecord, VerificationResultRecord,
+        PluginRecord,
+        LSPServerRecord, LSPDiagnosticRecord,
+    )
+
+    p3_ext_tables = [
+        VerificationReportRecord.__table__,
+        VerificationResultRecord.__table__,
+        PluginRecord.__table__,
+        LSPServerRecord.__table__,
+        LSPDiagnosticRecord.__table__,
+    ]
+    VerificationReportRecord.__table__.metadata.create_all(bind=engine, tables=p3_ext_tables)
 
 
 def seed_db():

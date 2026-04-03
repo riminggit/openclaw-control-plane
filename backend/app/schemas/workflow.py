@@ -150,7 +150,7 @@ class WorkflowTemplateResponse(BaseModel):
     version: str
     status: TemplateStatus
     dag: DAGDefinition
-    config: WorkflowConfig
+    config: Optional[WorkflowConfig] = None
     created_at: str
     created_by: str
     updated_at: str

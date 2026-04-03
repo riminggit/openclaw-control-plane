@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
+from app.core.auth import get_current_user_id
 from app.db import get_db
 from app.models.workflow import (
     WorkflowTemplate,
@@ -59,11 +60,6 @@ def _generate_uuid() -> str:
     return str(uuid4())
 
 
-def _get_current_user_id() -> str:
-    """获取当前用户 ID（临时硬编码，待集成认证系统）"""
-    return "user-001"
-
-
 def _now() -> str:
     """获取当前时间 ISO 格式"""
     return datetime.now(timezone.utc).isoformat()
@@ -75,7 +71,7 @@ def _parse_json(json_str: Optional[str]) -> Any:
         return {}
     try:
         return json.loads(json_str)
-    except:
+    except Exception:
         return {}
 
 
@@ -91,7 +87,9 @@ def _get_openclaw_agents() -> List[dict]:
     返回格式: [{"id": "...", "name": "...", "status": "..."}, ...]
     """
     try:
-        with open("/root/.openclaw/openclaw.json", "r", encoding="utf-8") as f:
+        from pathlib import Path
+        openclaw_config_path = Path.home() / ".openclaw" / "openclaw.json"
+        with open(openclaw_config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
         
         agents = []
@@ -223,22 +221,34 @@ def _advance_workflow(workflow_instance: WorkflowInstance, db: Session) -> None:
     
     逻辑：
     1. 找到当前正在运行的步骤
-    2. 如果没有，找到第一个 pending 的步骤
+    2. 如果没有，找到第一个依赖满足的 pending 步骤
     3. 启动该步骤
     """
+    from app.services.workflow.instance_service import WorkflowInstanceService
+    
     # 获取所有步骤执行记录
     step_executions = db.query(StepExecution).filter(
         StepExecution.workflow_instance_id == workflow_instance.id
     ).order_by(StepExecution.created_at)
     
-    # 找到第一个 pending 的步骤
+    # 获取全部步骤用于依赖检查
+    all_step_executions = step_executions.all()
+    
+    # 找到第一个依赖满足的 pending 步骤
     next_step = None
-    for se in step_executions:
+    for se in all_step_executions:
         if se.status == "pending":
-            # 检查依赖是否都已完成
-            # TODO: 实现依赖检查
-            next_step = se
-            break
+            # 使用统一的依赖检查逻辑
+            try:
+                deps_satisfied = WorkflowInstanceService.check_dependencies(
+                    db, se.step_id, workflow_instance.template_id, all_step_executions
+                )
+                if deps_satisfied:
+                    next_step = se
+                    break
+            except Exception as e:
+                logger.error(f"依赖检查失败 for step {se.name}: {e}")
+                continue
     
     if next_step:
         # 启动步骤
@@ -333,6 +343,9 @@ async def list_workflow_instances(
     total = query.count()
     
     # 应用排序
+    allowed_sort_fields = {"created_at", "updated_at", "status", "started_at", "completed_at", "duration", "progress"}
+    if sort_by not in allowed_sort_fields:
+        raise HTTPException(status_code=400, detail=f"Invalid sort field: {sort_by}. Allowed: {sorted(allowed_sort_fields)}")
     order_column = getattr(WorkflowInstance, sort_by, WorkflowInstance.created_at)
     if sort_order == "desc":
         query = query.order_by(order_column.desc())
@@ -403,6 +416,7 @@ async def list_workflow_instances(
 async def create_workflow_instance(
     request: WorkflowInstanceCreate,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     从模板创建工作流实例
@@ -436,8 +450,7 @@ async def create_workflow_instance(
     # 创建工作流实例
     instance_id = _generate_uuid()
     now = _now()
-    user_id = _get_current_user_id()
-    
+
     instance = WorkflowInstance(
         id=instance_id,
         template_id=request.template_id,
@@ -637,6 +650,7 @@ async def get_workflow_instance(
 async def start_workflow_instance(
     instance_id: str,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     启动工作流执行
@@ -678,7 +692,7 @@ async def start_workflow_instance(
         workflow_instance_id=instance_id,
         event_type="workflow.started",
         actor_type="user",
-        actor_id=_get_current_user_id(),
+        actor_id=user_id,
         timestamp=now,
         created_at=now,
     )
@@ -711,6 +725,7 @@ async def start_workflow_instance(
 async def pause_workflow_instance(
     instance_id: str,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     暂停工作流
@@ -761,7 +776,7 @@ async def pause_workflow_instance(
         workflow_instance_id=instance_id,
         event_type="workflow.paused",
         actor_type="user",
-        actor_id=_get_current_user_id(),
+        actor_id=user_id,
         timestamp=now,
         created_at=now,
     )
@@ -788,6 +803,7 @@ async def pause_workflow_instance(
 async def resume_workflow_instance(
     instance_id: str,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     恢复工作流
@@ -828,7 +844,7 @@ async def resume_workflow_instance(
         workflow_instance_id=instance_id,
         event_type="workflow.resumed",
         actor_type="user",
-        actor_id=_get_current_user_id(),
+        actor_id=user_id,
         timestamp=now,
         created_at=now,
     )
@@ -860,6 +876,7 @@ async def stop_workflow_instance(
     instance_id: str,
     request: TerminateWorkflowRequest,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     终止工作流
@@ -920,7 +937,7 @@ async def stop_workflow_instance(
         event_type="workflow.terminated",
         event_data=_to_json({"reason": request.reason}),
         actor_type="user",
-        actor_id=_get_current_user_id(),
+        actor_id=user_id,
         timestamp=now,
         created_at=now,
     )
@@ -1227,6 +1244,7 @@ async def approve_step_execution(
     step_id: str,
     request: ApproveReviewRequest,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     审核通过
@@ -1271,7 +1289,7 @@ async def approve_step_execution(
         id=_generate_uuid(),
         workflow_instance_id=instance_id,
         step_execution_id=step_id,
-        reviewer_id=_get_current_user_id(),
+        reviewer_id=user_id,
         action="approve",
         comment=request.comment,
         created_at=now,
@@ -1339,6 +1357,7 @@ async def reject_step_execution(
     step_id: str,
     request: RejectReviewRequest,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     审核拒绝
@@ -1383,7 +1402,7 @@ async def reject_step_execution(
         id=_generate_uuid(),
         workflow_instance_id=instance_id,
         step_execution_id=step_id,
-        reviewer_id=_get_current_user_id(),
+        reviewer_id=user_id,
         action="reject",
         comment=request.comment,
         created_at=now,
@@ -1423,7 +1442,7 @@ async def reject_step_execution(
             "comment": request.comment,
         }),
         actor_type="user",
-        actor_id=_get_current_user_id(),
+        actor_id=user_id,
         timestamp=now,
         created_at=now,
     )

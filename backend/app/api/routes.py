@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, Field
@@ -24,7 +25,7 @@ class CreateProjectRequest(BaseModel):
 class UpdateProjectRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = None
-    status: Optional[str] = Field(None)
+    status: Optional[str] = Field(None, pattern=r'^(active|archived|suspended)$')
 
 class CreateTaskRequest(BaseModel):
     project_id: str = Field(..., min_length=1)
@@ -53,7 +54,6 @@ class PaginatedResponse(BaseModel):
 
 
 def _task_to_item(t: Task, project: Project | None = None) -> TaskItem:
-    now = datetime.now(timezone.utc).isoformat()
     return TaskItem(
         id=str(t.id),
         title=t.title,
@@ -68,9 +68,9 @@ def _task_to_item(t: Task, project: Project | None = None) -> TaskItem:
         ownerRole=t.owner_role or "",
         ownerAgentId=str(t.owner_agent_id) if t.owner_agent_id else None,
         riskLevel=t.risk_level or "low",
-        docSyncRisk=t.doc_sync_risk or "low",
+        docSyncRisk="high" if t.doc_sync_risk else "low",
         createdAt=str(t.created_at) if t.created_at else None,
-        updatedAt=now,
+        updatedAt=str(t.updated_at) if t.updated_at else None,
     )
 
 
@@ -133,7 +133,7 @@ def get_project(project_id: str, db: Session = Depends(get_db)):
 def create_project(body: CreateProjectRequest, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc).isoformat()
     try:
-        p = Project(id=str(__import__('uuid').uuid4()), code=body.code, name=body.name, description=body.description, status="active", created_at=now, updated_at=now)
+        p = Project(id=str(uuid.uuid4()), code=body.code, name=body.name, description=body.description, status="active", created_at=now, updated_at=now)
         db.add(p)
         db.commit()
         db.refresh(p)
@@ -210,7 +210,7 @@ def create_task(body: CreateTaskRequest, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc).isoformat()
     try:
         t = Task(
-            id=str(__import__('uuid').uuid4()),
+            id=str(uuid.uuid4()),
             project_id=body.project_id,
             title=body.title,
             description=body.description,
@@ -245,12 +245,12 @@ def update_task(task_id: str, body: UpdateTaskRequest, db: Session = Depends(get
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskItem)
-def patch_task(task_id: str, body: dict, db: Session = Depends(get_db)):
+def patch_task(task_id: str, body: UpdateTaskRequest, db: Session = Depends(get_db)):
     """Partial update a task (e.g. change status only)."""
     t = db.query(Task).filter(Task.id == task_id).first()
     if not t:
         raise HTTPException(404, "Task not found")
-    for field, value in body.items():
+    for field, value in body.model_dump(exclude_unset=True).items():
         if hasattr(t, field):
             setattr(t, field, value)
     t.updated_at = datetime.now(timezone.utc).isoformat()
@@ -268,7 +268,10 @@ def transition_task(task_id: str, body: dict, db: Session = Depends(get_db)):
     new_status = body.get("status") or body.get("new_status")
     if not new_status:
         raise HTTPException(400, "Missing 'status' field")
-    valid = ["planned", "approved", "in_progress", "review", "blocked", "completed", "cancelled", "stopped"]
+    valid = [
+        "planned", "approved", "in_progress", "review", "blocked",
+        "completed", "done", "cancelled", "stopped",
+    ]
     if new_status not in valid:
         raise HTTPException(400, f"Invalid status. Must be one of: {valid}")
     old_status = t.status

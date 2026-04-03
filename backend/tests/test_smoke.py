@@ -41,7 +41,10 @@ class TestProjects:
 
     def test_create_project(self):
         code = f"TST{uuid.uuid4().hex[:4].upper()}"
-        r = client.post(f"/api/projects?name=Test+Proj&code={code}")
+        r = client.post(
+            "/api/projects",
+            json={"name": "Test Proj", "code": code},
+        )
         assert r.status_code == 201
         assert r.json()["code"] == code
 
@@ -65,7 +68,15 @@ class TestTasks:
         assert r.status_code == 404
 
     def test_create_task(self):
-        r = client.post("/api/tasks?project_id=proj-ocp-001&title=Smoke+Task&category=test&priority=low")
+        r = client.post(
+            "/api/tasks",
+            json={
+                "project_id": "proj-ocp-001",
+                "title": "Smoke Task",
+                "category": "test",
+                "priority": "low",
+            },
+        )
         assert r.status_code == 201
         assert r.json()["title"] == "Smoke Task"
 
@@ -74,12 +85,20 @@ class TestTasks:
         tasks = r.json()["items"]
         if tasks:
             tid = tasks[0]["id"]
-            r2 = client.put(f"/api/tasks/{tid}?status=done")
+            r2 = client.put(f"/api/tasks/{tid}", json={"status": "done"})
             assert r2.status_code == 200
             assert r2.json()["status"] == "done"
 
     def test_delete_task(self):
-        r = client.post("/api/tasks?project_id=proj-ocp-001&title=To+Delete&category=test&priority=low")
+        r = client.post(
+            "/api/tasks",
+            json={
+                "project_id": "proj-ocp-001",
+                "title": "To Delete",
+                "category": "test",
+                "priority": "low",
+            },
+        )
         assert r.status_code == 201
         tid = r.json()["id"]
         r2 = client.delete(f"/api/tasks/{tid}")
